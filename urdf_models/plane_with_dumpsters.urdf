@@ -1,0 +1,123 @@
+<?xml version="1.0" ?>
+<robot name="plane">
+<material name="grey">
+  <color rgba="0.5 0.5 0.5 1.0"/>
+</material>
+
+<link name="baseLink">
+  <inertial>
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <mass value=".0"/>
+    <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+  </inertial>
+  <visual>
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <geometry>
+      <mesh filename="plane100.obj" scale="1 1 1"/>
+    </geometry>
+    <material name="white">
+      <color rgba="1 1 1 1"/>
+    </material>
+  </visual>
+  <collision>
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <geometry>
+      <box size="200 200 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<joint name="fix_dumpster" type="fixed">
+  <!-- <joint name="caster_back_right_joint" type="floating"> -->
+  <parent link="baseLink"/>
+  <child link="dumpster"/>
+  <origin rpy="0 0 0" xyz="100 100 0"/>
+</joint>
+
+<link name="dumpster">
+  <visual>
+    <origin rpy="0 0 0" xyz="0.0 0.0 .0"/>
+    <geometry>
+      <box size="2.0 2.0 0.1" />
+    </geometry>
+    <material name="grey"/>
+  </visual>
+  <visual>
+    <origin rpy="1.5707963267948966 0 0" xyz="0.0 .95 .24"/>
+    <geometry>
+      <box size="2.0 .5 0.1" />
+    </geometry>
+    <material name="grey"/>
+  </visual>
+  <visual>
+    <origin rpy="1.5707963267948966 0 0" xyz="0.0 -.95 .24"/>
+    <geometry>
+      <box size="2.0 .5 0.1" />
+    </geometry>
+    <material name="grey"/>
+  </visual>
+  <visual>
+    <origin rpy="0 1.5707963267948966 0" xyz=".95 0.0 .24"/>
+    <geometry>
+      <box size=".5 2.0 0.1" />
+    </geometry>
+    <material name="grey"/>
+  </visual>
+  <visual>
+    <origin rpy="0 1.5707963267948966 0" xyz="-.95 0.0 .24"/>
+    <geometry>
+      <box size=".5 2.0 0.1" />
+    </geometry>
+    <material name="grey"/>
+  </visual>
+
+  <collision>
+    <origin rpy="0 0 0" xyz="0.0 0.0 .0"/>
+    <geometry>
+      <box size="2.0 2.0 0.1" />
+    </geometry>
+    <material name="grey"/>
+  </collision>
+  <collision>
+    <origin rpy="1.5707963267948966 0 0" xyz="0.0 .95 .24"/>
+    <geometry>
+      <box size="2.0 .5 0.1" />
+    </geometry>
+    <material name="grey"/>
+  </collision>
+  <collision>
+    <origin rpy="1.5707963267948966 0 0" xyz="0.0 -.95 .24"/>
+    <geometry>
+      <box size="2.0 .5 0.1" />
+    </geometry>
+    <material name="grey"/>
+  </collision>
+  <collision>
+    <origin rpy="0 1.5707963267948966 0" xyz=".95 0.0 .24"/>
+    <geometry>
+      <box size=".5 2.0 0.1" />
+    </geometry>
+    <material name="grey"/>
+  </collision>
+  <collision>
+    <origin rpy="0 1.5707963267948966 0" xyz="-.95 0.0 .24"/>
+    <geometry>
+      <box size=".5 2.0 0.1" />
+    </geometry>
+    <material name="grey"/>
+  </collision>
+  <contact>
+    <lateral_friction value="1.0"/>
+    <rolling_friction value="1.0"/>
+    <!-- <stiffness value="30000"/> -->
+    <!-- <damping value="1000"/> -->
+  </contact>
+  
+  <inertial>
+    <origin xyz="0.0 0.0 0.0"/>
+    <mass value="1.0+03"/>
+    <inertia ixx="1.2505234e-05" ixy="0.0" ixz="-1.7855208e-07" iyy="2.1898364e-05" iyz="0.0" izz="1.9267361e-05"/>
+  </inertial>
+</link>  
+</robot>
+
