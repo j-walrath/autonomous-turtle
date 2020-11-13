@@ -36,4 +36,4 @@ number of objects for retrieval is unknown prior to start, the turtlebot bale wi
 bandit algorithms to efficiently find objects and identify what kind/how many turtlebots to assign to
 clear them.
 4. The multirobot system will be required to **coordinate cooperative effort**: Certain objects will be
-constructed such that the use of multiple turtlebots is necessary to transport them once identied.
+constructed such that the use of multiple turtlebots is necessary to transport them once identified.
