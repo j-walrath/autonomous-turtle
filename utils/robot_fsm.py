@@ -10,8 +10,10 @@ DEG_TO_RAD = np.pi/180
 MAX_TRASH_VOLUME = 10
 OBJECT_STATUS = ["ON_GROUND", "ASSIGNED", "REMOVED"]
 
+
 def normalize_vector(v):
     return v/np.linalg.norm(v)
+
 
 class ManipulatorStateMachine:
     def __init__(self, pb_client, robot_id):
@@ -120,11 +122,12 @@ class ManipulatorStateMachine:
 
         return 'INPROCESS'
 
+
 class RobotStateMachine:
     maximum_destination_timeout = 40*5
     maximum_escape_timeout = 40*2
     maximum_visual_servo_timeout = 40*5
-    collection_sites = [((0,0), 5)] # location, range
+    collection_sites = [((0, 0), 5)]  # location, range
     
     threshold_distance = 1.0
     gain_weight_magnitude = 5.0

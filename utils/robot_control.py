@@ -4,23 +4,25 @@ from scipy.linalg import logm
 
 import pybullet as pb
 
-
 DEG_TO_RAD = np.pi/180
 
+
 def euler_to_rot_mat(yaw):
-    return np.matrix([[np.cos(yaw), -np.sin(yaw)],
+    return np.array([[np.cos(yaw), -np.sin(yaw)],
                       [np.sin(yaw), np.cos(yaw)]])
+
 
 def normalize_vector(v):
     return v/np.linalg.norm(v)
 
+
 def compute_rotational_velocity(yaw_robot, yaw_target):
     relative_orientation = yaw_target - yaw_robot
     
-    relative_orientation_mat = np.matrix([[np.cos(relative_orientation), -np.sin(relative_orientation)],
+    relative_orientation_mat = np.array([[np.cos(relative_orientation), -np.sin(relative_orientation)],
                                           [np.sin(relative_orientation), np.cos(relative_orientation)]])
 
-    return logm(relative_orientation_mat)[1,0]
+    return logm(relative_orientation_mat)[1, 0]
 
 
 class RobotControl:
