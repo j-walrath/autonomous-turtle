@@ -190,4 +190,83 @@ class RobotStateMachine:
                 if self.world_state["objects"][obj][1] != "ON_GROUND": continue
 
                 obj_pos = self.world_state["objects"][obj][0]
-                obj_vector = np.array([obj_pos[0] - pose[0]])
+                obj_vector = np.array([obj_pos[0] - pose[0], obj_pos[1] - pose[1]])
+
+                if np.linalg.norm(obj_vector) <= 0.5:
+                    self.control.velocity_control(self.robot, 0, 0)
+                    self.target_obj = obj
+                    self.world_state["objects"][obj][1] = "ASSIGNED"
+                    self.visual_servo_timeout = 0
+                    return "VISUALSERVO"
+
+        if self.destination is not None:
+            dist = np.linalg.norm((self.destination[0] - pose[0], self.destination[1] - pose[1]))
+
+            # increase the timeout counter when there is no improvement in reaching the destination
+            if self.dest_dist <= dist:
+                self.dest_timeout += 1
+
+                if self.dest_timeout >= self.max_dest_timeout:
+                    self.control.velocity_control(self.robot, 0, 0)
+                    self.destination = None
+
+                    return "NONE"
+
+            self.dest_dist = dist
+
+            if self.dest_dist > 0.3:
+                weight_magnitude = lambda distance: np.exp(self.gain_mag * (self.threshold_distance - distance))
+                weight_degree = lambda distance: 1 / (1 + np.exp(-self.gain_deg * (self.threshold_distance - distance)))
+                vl, vr = self.control.pose_control_with_collision_avoidance(self.robot, self.destination, 0, weight_magnitude, weight_degree, threshold_distance=self.threshold_distance)
+
+            else:
+                self.control.velocity_control(self.robot, 0, 0)
+                self.destination = None
+
+        return "NONE"
+
+    def visual_servo(self, state):
+        pose, vel = state[1]
+
+        try:
+            if self.world_state["objects"][self.target_obj][1] == "REMOVED":
+                self.target_obj = None
+                return "MOVE"
+
+            obj_pos = self.world_state["objects"][self.target_obj][0]
+
+        except KeyError:
+            self.target_obj = None
+            return "MOVE"
+
+        dist, orn, vl, vr = self.control(self.robot, obj_pos, pose)
+
+        if dist <= 0.05 and orn < 10 * np.pi / 180:
+            self.control.velocity_control(self.robot, 0, 0)
+            self.arm_fsm.reinitialize()
+            self.arm_fsm.object = self.target_obj
+
+            return "PICKUP"
+
+        return "NONE"
+
+    def retrieve(self, state):
+        return "NONE"
+
+    def set_destination(self, destination):
+        self.destination = destination
+        self.dest_timeout = 0
+
+    def update_world_state(self, state):
+        self.world_state = state
+
+    def run_once(self, state):
+        new_state = self.handler(state)
+        if new_state is not "NONE":
+            self.handler = self.handlers(new_state)
+
+    def breakdown(self):
+        self.control.velocity_control(self.robot, 0, 0)
+
+        return
+
