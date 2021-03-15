@@ -39,7 +39,8 @@ clear them.
 constructed such that the use of multiple turtlebots is necessary to transport them once identified.
 
 ## Simulator Structure
-This simulator uses PyBullet for realtime physics simulation and rendering. It runs across four primary files:
+This simulator uses PyBullet for realtime physics simulation and rendering. Other dependencies are recorded in
+`requirements.txt`. Simulation runs across four primary files:
 - `runsim.py` is the top level control of the simulation environment. It is where the simworld (to include all objects
 within it) are loaded, as well as where the primary execution loop occurs.
 - `control.py` is the low level (i.e. join manipulation) control of the robot models through PyBullet.
