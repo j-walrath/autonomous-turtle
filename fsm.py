@@ -2,10 +2,11 @@ import numpy as np
 import pybullet as p
 
 from runsim import object_states
-from utils.robot_control import RobotControl
+from control import RobotControl
 
 DEG_TO_RAD = np.pi/180
 MAX_VOLUME = 100
+DISTANCE_THRESHOLD = 0.3
 OBJECT_STATUS = ["GROUND", "ASSIGNED", "REMOVED"]
 
 
@@ -18,6 +19,7 @@ def in_tolerance(v1, v2):
 
 
 class ManipulatorStateMachine:
+    # TODO: Settle on the structure of manipulator_state
 
     def __init__(self, pb, robot_id):
         self.pb = pb
@@ -184,7 +186,7 @@ class RobotStateMachine:
         # if an object is detected, transition to visual servoing
         if object_states is not None and self.esc_timeout >= self.max_esc_timeout:
 
-            # find the object? this feels so inefficient TODO: understand this math
+            # find the closest object (this feels so inefficient) TODO: make this faster
             for obj in object_states.keys():
                 if object_states[obj] != "ON_GROUND": continue
 
@@ -207,18 +209,18 @@ class RobotStateMachine:
 
                 if self.dest_timeout >= self.max_dest_timeout:
                     self.control.velocity_control(self.robot, 0, 0)
-                    self.destination = None
+                    self.set_destination(None)
 
                     return "NONE"
 
             self.dest_dist = dist
 
-            if self.dest_dist > 0.3:
+            if self.dest_dist > DISTANCE_THRESHOLD:
                 vl, vr = self.control.pose_control(self.robot, self.destination)
 
             else:
                 self.control.velocity_control(self.robot, 0, 0)
-                self.destination = None
+                self.set_destination(None)
 
         return "NONE"
 
@@ -236,7 +238,7 @@ class RobotStateMachine:
             self.target_obj = None
             return "MOVE"
 
-        dist, orn, vl, vr = self.control(self.robot, obj_pos, pose)
+        dist, orn, vl, vr = self.control.visual_servoing(self.robot, obj_pos, pose)
 
         if dist <= 0.05 and orn < 10 * np.pi / 180:
             self.control.velocity_control(self.robot, 0, 0)
@@ -248,6 +250,19 @@ class RobotStateMachine:
         return "NONE"
 
     def retrieve(self, state):
+        pose, vel = state[1]
+
+        return_site = [0, 0]
+        return_dist = np.linalg.norm((return_site[0] - pose[0], return_site[1] - pose[1]))
+
+        if return_dist > DISTANCE_THRESHOLD:
+            vl, vr = self.control.pose_control(self.robot, return_site)
+        else:
+            self.control.velocity_control(self.robot, 0, 0)
+            self.arm_fsm.empty_basket()
+            self.set_destination(None)
+            return "MOVE"
+
         return "NONE"
 
     def set_destination(self, destination):
@@ -257,7 +272,7 @@ class RobotStateMachine:
     def run_once(self, state):
         new_state = self.handler(state)
         if new_state is not "NONE":
-            self.handler = self.handlers(new_state)
+            self.handler = self.handlers[new_state]
 
     def breakdown(self):
         self.control.velocity_control(self.robot, 0, 0)
