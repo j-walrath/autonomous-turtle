@@ -37,3 +37,26 @@ bandit algorithms to efficiently find objects and identify what kind/how many tu
 clear them.
 4. The multirobot system will be required to **coordinate cooperative effort**: Certain objects will be
 constructed such that the use of multiple turtlebots is necessary to transport them once identified.
+
+## Simulator Structure
+This simulator uses PyBullet for realtime physics simulation and rendering. It runs across four primary files:
+- `runsim.py` is the top level control of the simulation environment. It is where the simworld (to include all objects
+within it) are loaded, as well as where the primary execution loop occurs.
+- `control.py` is the low level (i.e. join manipulation) control of the robot models through PyBullet.
+- `fsm.py` contains finite state machines to control the actions of both the robots and their manipulator arms. The
+finite state machines combine sequences of low level functions from `control.py` (e.g. gripper pinch & release) into
+high level sequences such as 'retrieve an object'. `fsm.py` is used by `runsim.py` to control the actions of the robots.
+- A python file containing the algorithm for the robots to follow while the simulation is running (e.g. `UCB1.py`). This
+file utilizes the functionality of `fsm.py` to control the multirobot system in accordance with a developed runtime
+algorithm for object retrieval. `runsim.py` determines which algorithm is followed.
+
+The other files and directories in the simulator are described below:
+- `utils` directory: contains (deprecated) utility files that originally contained material now consolidated in
+`control.py` and `fsm.py`.
+- `urdf_models` directory: contains the models for the robots and objects as **U**nified **R**obot **D**escription 
+**F**ormat files. 
+- `outputs` directory: stores the rendered video and graphs generated when the simulation is run.
+- `src` directory: a deprecated directory inherited with the first version of the simulator and untouched since.
+- `demo` directory: a deprecated demo run of the simulator originally written as a Jupyter Notebook.
+- `UCB1.ipynb` etc. files: Jupyter Notebooks testing algorithms before they are implemented and run with the physics
+simulator.
