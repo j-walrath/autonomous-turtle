@@ -1,8 +1,8 @@
 import numpy as np
 import pybullet as p
 
+from runsim import object_states
 from utils.robot_control import RobotControl
-from utils.sensor_models import SensorModels
 
 DEG_TO_RAD = np.pi/180
 MAX_VOLUME = 100
@@ -105,7 +105,7 @@ class ManipulatorStateMachine:
         if new_state is "DONE":
             self.current_volume += 1
 
-            if self.current_volume >= MAX_VOLUME:  # TODO: Why is this >=?
+            if self.current_volume >= MAX_VOLUME:
                 return "RETRIEVE"
 
             return "DONE"
@@ -135,7 +135,6 @@ class RobotStateMachine:
 
         self.robot = robot_id
         self.destination = None
-        self.world_state = None
         self.target_obj = None
 
         self.dest_dist = 0
@@ -156,7 +155,7 @@ class RobotStateMachine:
 
         if result is "DONE":
             try:
-                self.world_state["objects"][self.target_obj][1] = "REMOVED"
+                object_states[self.target_obj] = "REMOVED"
             except KeyError:
                 pass
 
@@ -166,7 +165,7 @@ class RobotStateMachine:
 
         elif result is "RETRIEVE":
             try:
-                self.world_state["objects"][self.target_obj][1] = "REMOVED"
+                object_states[self.target_obj] = "REMOVED"
             except KeyError:
                 pass
 
@@ -182,21 +181,21 @@ class RobotStateMachine:
         if self.esc_timeout < self.max_esc_timeout:
             self.esc_timeout += 1
 
-        # if an object is detected, transition to visual servoing TODO: wtf does this mean
-        if self.world_state is not None and self.esc_timeout >= self.max_esc_timeout:
+        # if an object is detected, transition to visual servoing
+        if object_states is not None and self.esc_timeout >= self.max_esc_timeout:
 
             # find the object? this feels so inefficient TODO: understand this math
-            for obj in self.world_state["objects"].keys():
-                if self.world_state["objects"][obj][1] != "ON_GROUND": continue
+            for obj in object_states.keys():
+                if object_states[obj] != "ON_GROUND": continue
 
-                obj_pos = self.world_state["objects"][obj][0]
+                obj_pos, orn = self.pb.getBasePositionAndOrientation(bodyUniqueId=obj)
                 obj_vector = np.array([obj_pos[0] - pose[0], obj_pos[1] - pose[1]])
 
                 if np.linalg.norm(obj_vector) <= 0.5:
                     self.control.velocity_control(self.robot, 0, 0)
                     self.target_obj = obj
-                    self.world_state["objects"][obj][1] = "ASSIGNED"
-                    self.visual_servo_timeout = 0
+                    object_states[obj] = "ASSIGNED"
+                    self.servo_timeout = 0
                     return "VISUALSERVO"
 
         if self.destination is not None:
@@ -215,9 +214,7 @@ class RobotStateMachine:
             self.dest_dist = dist
 
             if self.dest_dist > 0.3:
-                weight_magnitude = lambda distance: np.exp(self.gain_mag * (self.threshold_distance - distance))
-                weight_degree = lambda distance: 1 / (1 + np.exp(-self.gain_deg * (self.threshold_distance - distance)))
-                vl, vr = self.control.pose_control_with_collision_avoidance(self.robot, self.destination, 0, weight_magnitude, weight_degree, threshold_distance=self.threshold_distance)
+                vl, vr = self.control.pose_control(self.robot, self.destination)
 
             else:
                 self.control.velocity_control(self.robot, 0, 0)
@@ -229,11 +226,11 @@ class RobotStateMachine:
         pose, vel = state[1]
 
         try:
-            if self.world_state["objects"][self.target_obj][1] == "REMOVED":
+            if object_states[self.target_obj] == "REMOVED":
                 self.target_obj = None
                 return "MOVE"
 
-            obj_pos = self.world_state["objects"][self.target_obj][0]
+            obj_pos = object_states[self.target_obj]
 
         except KeyError:
             self.target_obj = None
@@ -256,9 +253,6 @@ class RobotStateMachine:
     def set_destination(self, destination):
         self.destination = destination
         self.dest_timeout = 0
-
-    def update_world_state(self, state):
-        self.world_state = state
 
     def run_once(self, state):
         new_state = self.handler(state)

@@ -12,9 +12,9 @@ Many values are hardcoded, but will be parameterized in the future once I
 get a better sense of which values are variable.
 """
 
-
 # IMPORTS
 import time
+import logging
 
 import numpy as np
 
@@ -31,11 +31,17 @@ planeModel = "./urdf_models/plane_with_dumpsters.urdf"
 objModel = "./urdf_models/objects/object.urdf"
 robotModel = "./urdf_models/tb_openmanipulator/trash_collect_robot_four_wheel.urdf"
 
-# TODO: Track 'global' variables here (e.g. obj & robot ids)
-DEFAULT_BOUNDS = (-5, 5)
+# CONSTANTS & GLOBAL VARIABLES
+DEFAULT_BOUNDS = (-5, 5)   # area bounds for sim world
+
+objects = []               # list of body unique object IDs
+object_states = {}         # key: object ID, val: string state of object
+
+robots = []                # list of body unique robot IDs
+robot_fsms = {}            # key: robot ID, val: robot FSM instance
 
 
-def init_sim(numObjects, numRobots):  # PYBULLET INIT
+def init_sim(numObjects=10, numRobots=2):  # PYBULLET INIT
     pb = pbc.BulletClient(connection_mode=p.GUI)
     pb.setAdditionalSearchPath(pybullet_data.getDataPath())
     pb.setGravity(0, 0, -9.807)
@@ -46,23 +52,15 @@ def init_sim(numObjects, numRobots):  # PYBULLET INIT
     pb.changeDynamics(0, 0, lateralFriction=1.0, spinningFriction=0.0, rollingFriction=0.0)
 
     # LOAD OBJECTS
-    objects = load_objects(pb, DEFAULT_BOUNDS[0], DEFAULT_BOUNDS[1], numObjects)
-    object_states = {}
-    for obj in objects:
-        pos, orn = pb.getBasePositionAndOrientation(bodyUniqueId=obj)
-        object_states[obj] = [pos, "ON_GROUND"]
+    load_objects(pb, DEFAULT_BOUNDS[0], DEFAULT_BOUNDS[1], numObjects)
 
     # LOAD ROBOTS
-    robots = load_robots(pb, DEFAULT_BOUNDS[0], DEFAULT_BOUNDS[1], numRobots)
-    fsm = {}
-    for robot in robots:
-        fsm[robot] = RobotStateMachine(pb, robot, max_linear_v=1.0, max_rotational_v=2 * np.pi)
+    load_robots(pb, DEFAULT_BOUNDS[0], DEFAULT_BOUNDS[1], numRobots)
 
-    return pb, robots, fsm, objects, object_states
+    return pb
 
 
 def load_objects(pb, lBound, uBound, numObjects):  # LOAD OBJECTS
-    objects = []
     lower = lBound + 0.5
     upper = uBound - 0.5
     rng = np.random.default_rng()
@@ -70,12 +68,9 @@ def load_objects(pb, lBound, uBound, numObjects):  # LOAD OBJECTS
     for i in range(numObjects):
         objects.append(pb.loadURDF(objModel, basePosition=[coords[i, 0], coords[i, 1], 0.3], globalScaling=1.0))
 
-    return objects
-
 
 def load_robots(pb, lBound, uBound, numRobots):  # LOAD ROBOT(S)
     # TODO: Fix loading in multiple robots
-    robots = []
     orn = p.getQuaternionFromEuler([0, 0, 0])
 
     if numRobots == 1:
@@ -90,21 +85,38 @@ def load_robots(pb, lBound, uBound, numRobots):  # LOAD ROBOT(S)
             robots.append(pb.loadURDF(robotModel, [coords[i, 0], coords[i, 1], 0.5], orn))
             pb.changeDynamics(robots[-1], -1, maxJointVelocity=300)
 
-    return robots
+
+def init_states(pb):
+    for obj in objects:
+        object_states[obj] = 'ON_GROUND'
+
+    for robot in robots:
+        robot_fsms[robot] = RobotStateMachine(pb, robot, max_linear_v=1.0, max_rotational_v=2 * np.pi)
 
 
 def step(pb, t):
     for _ in range(t):
         pb.stepSimulation()
-        time.sleep(1./240.)
+        time.sleep(1. / 240.)
+
 
 # RUN SIM
 # TODO: Robots follow UCB algorithm
 # TODO: Add live stats to the GUI
 # TODO: Record frames/stats and save to output
 if __name__ == "__main__":
-    pb, robots, fsm, objects, object_states = init_sim()
+    logging.info('Initializing GUI Simulator...')
+    pb = init_sim()
+    step(pb, 100)
 
+    logging.info('Initializing Object & Robot States...')
+    init_states(pb)
+    step(pb, 100)
+
+    logging.info('Running Simulation...')
     step(pb, 10000)
 
+    logging.info('Simulation Runtime Complete.')
+
+    logging.info('Disconnecting Simulation...')
     pb.disconnect()
