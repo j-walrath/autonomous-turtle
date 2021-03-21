@@ -23,6 +23,10 @@ import pybullet_utils.bullet_client as pbc
 import pybullet_data
 
 from fsm import RobotStateMachine
+from control import RobotControl
+from test1 import test1
+
+logging.basicConfig(level=logging.NOTSET)
 
 # DIRECTORIES & LOCATIONS
 baseDir = './urdf_models/'
@@ -91,7 +95,7 @@ def init_states(pb):
         object_states[obj] = 'ON_GROUND'
 
     for robot in robots:
-        robot_fsms[robot] = RobotStateMachine(pb, robot, max_linear_v=1.0, max_rotational_v=2 * np.pi)
+        robot_fsms[robot] = RobotStateMachine(pb, object_states, robot, max_linear_v=1.0, max_rotational_v=2 * np.pi)
 
 
 def step(pb, t):
@@ -105,8 +109,12 @@ def step(pb, t):
 # TODO: Add live stats to the GUI
 # TODO: Record frames/stats and save to output
 if __name__ == "__main__":
+    numObjects = 1
+    numRobots = 1
+    sequence = test1
+
     logging.info('Initializing GUI Simulator...')
-    pb = init_sim()
+    pb = init_sim(numObjects, numRobots)
     step(pb, 100)
 
     logging.info('Initializing Object & Robot States...')
@@ -114,7 +122,7 @@ if __name__ == "__main__":
     step(pb, 100)
 
     logging.info('Running Simulation...')
-    step(pb, 10000)
+    sequence(pb, objects, object_states, robots, robot_fsms)
 
     logging.info('Simulation Runtime Complete.')
 
