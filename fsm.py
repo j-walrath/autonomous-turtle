@@ -1,7 +1,7 @@
 import numpy as np
 import pybullet as p
+import logging
 
-from runsim import object_states
 from control import RobotControl
 
 DEG_TO_RAD = np.pi/180
@@ -15,7 +15,7 @@ def normalize_vector(v):
 
 
 def in_tolerance(v1, v2):
-    return np.linalg.norm(v1, v2) < 0.01
+    return np.linalg.norm(v1 - v2) < 0.01
 
 
 class ManipulatorStateMachine:
@@ -40,14 +40,14 @@ class ManipulatorStateMachine:
         self.control = RobotControl(pb)
         self.target_state = [0, 0, 0, 0]
 
-    def release(self):
+    def release(self, manipulator_state):
         self.pb.removeConstraint(self.constraint)
         self.object = None
         self.constraint = None
 
         return "ORIGIN"
 
-    def grab(self):
+    def grab(self, manipulator_state):
         self.constraint = self.pb.createConstraint(parentBodyUniqueId=self.robot,
                                                    parentLinkIndex=10,
                                                    childBodyUniqueId=self.object,
@@ -63,7 +63,7 @@ class ManipulatorStateMachine:
         target_state = np.array([-0.0016962233862355199, 1.2404879177129509, -0.901944524850455, 1.1624811955078364])
 
         if self.current_state == "LOWER":
-            if in_tolerance(target_state, manipulator_state):
+            if in_tolerance(target_state, manipulator_state[0][:4]):
                 return "GRAB"
         else:
             self.control.manipulator_control(self.robot, target_state)
@@ -73,7 +73,7 @@ class ManipulatorStateMachine:
 
     def place(self, manipulator_state):  # TODO: Why is the structure of place() different than lower()?
         if self.current_state == "PLACE":
-            if in_tolerance(self.target_state, manipulator_state):
+            if in_tolerance(self.target_state, manipulator_state[0][:4]):
                 return "RELEASE"
         else:
             self.target_state = np.array([np.pi - 0.2 * np.random.random(), 0, 0.4, 1.1])
@@ -86,7 +86,7 @@ class ManipulatorStateMachine:
         target_state = np.array([5.08753421763152e-07, -1.3962637001751304, 1.0471974880549502, 0.523599283823225])
 
         if self.current_state == "ORIGIN":
-            if in_tolerance(self.target_state, manipulator_state):
+            if in_tolerance(self.target_state, manipulator_state[0][:4]):
                 return "DONE"
         else:
             self.control.manipulator_control(self.robot, target_state)
@@ -127,17 +127,18 @@ class RobotStateMachine:
     gain_mag = 5.0
     gain_deg = 5.0
 
-    def __init__(self, pb, robot_id, max_linear_v=0.2, max_rotational_v=5.0):
+    def __init__(self, pb, obj_states, robot_id, max_linear_v=0.2, max_rotational_v=5.0):
         self.pb = pb
         self.handlers = {"PICKUP": self.pickup,
                          "MOVE": self.move,
-                         "SERVO": self.servo,
+                         "VISUALSERVO": self.visual_servo,
                          "RETRIEVE": self.retrieve}
         self.handler = self.move
 
         self.robot = robot_id
         self.destination = None
         self.target_obj = None
+        self.obj_states = obj_states
 
         self.dest_dist = 0
         self.dest_timeout = 0
@@ -157,7 +158,7 @@ class RobotStateMachine:
 
         if result is "DONE":
             try:
-                object_states[self.target_obj] = "REMOVED"
+                self.obj_states[self.target_obj] = "REMOVED"
             except KeyError:
                 pass
 
@@ -167,7 +168,7 @@ class RobotStateMachine:
 
         elif result is "RETRIEVE":
             try:
-                object_states[self.target_obj] = "REMOVED"
+                self.obj_states[self.target_obj] = "REMOVED"
             except KeyError:
                 pass
 
@@ -184,11 +185,11 @@ class RobotStateMachine:
             self.esc_timeout += 1
 
         # if an object is detected, transition to visual servoing
-        if object_states is not None and self.esc_timeout >= self.max_esc_timeout:
+        if self.obj_states is not None and self.esc_timeout >= self.max_esc_timeout:
 
             # find the closest object (this feels so inefficient) TODO: make this faster
-            for obj in object_states.keys():
-                if object_states[obj] != "ON_GROUND": continue
+            for obj in self.obj_states.keys():
+                if self.obj_states[obj] != "ON_GROUND": continue
 
                 obj_pos, orn = self.pb.getBasePositionAndOrientation(bodyUniqueId=obj)
                 obj_vector = np.array([obj_pos[0] - pose[0], obj_pos[1] - pose[1]])
@@ -196,7 +197,7 @@ class RobotStateMachine:
                 if np.linalg.norm(obj_vector) <= 0.5:
                     self.control.velocity_control(self.robot, 0, 0)
                     self.target_obj = obj
-                    object_states[obj] = "ASSIGNED"
+                    self.obj_states[obj] = "ASSIGNED"
                     self.servo_timeout = 0
                     return "VISUALSERVO"
 
@@ -228,11 +229,11 @@ class RobotStateMachine:
         pose, vel = state[1]
 
         try:
-            if object_states[self.target_obj] == "REMOVED":
+            if self.obj_states[self.target_obj] == "REMOVED":
                 self.target_obj = None
                 return "MOVE"
 
-            obj_pos = object_states[self.target_obj]
+            obj_pos = self.control.get_object_state(self.target_obj)
 
         except KeyError:
             self.target_obj = None

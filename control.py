@@ -36,6 +36,10 @@ class RobotControl:
         self.max_linear_velocity = max_linear_velocity
         self.max_rotational_velocity = max_rotational_velocity
 
+    def get_object_state(self, object_id):
+        position, orientation = self.pb_client.getBasePositionAndOrientation(bodyUniqueId=object_id)
+        return (position[0], position[1])
+
     def get_manipulator_state(self, robot_id):
         joint_angles, velocity, _, _ = zip(
             *self.pb_client.getJointStates(bodyUniqueId=robot_id, jointIndices=range(11 - 4, 15 - 4)))
