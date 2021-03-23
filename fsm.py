@@ -1,13 +1,12 @@
 import numpy as np
 import pybullet as p
-import logging
 
 from control import RobotControl
 
 DEG_TO_RAD = np.pi/180
-MAX_VOLUME = 100
+MAX_VOLUME = 1
 DISTANCE_THRESHOLD = 0.3
-OBJECT_STATUS = ["GROUND", "ASSIGNED", "REMOVED"]
+OBJECT_STATUS = ["ON_GROUND", "ASSIGNED", "REMOVED", "RETRIEVED"]
 
 
 def normalize_vector(v):
@@ -38,13 +37,14 @@ class ManipulatorStateMachine:
         self.constraint = None
 
         self.control = RobotControl(pb)
-        self.target_state = [0, 0, 0, 0]
+        self.target_state = np.array([0, 0, 0, 0])
 
     def release(self, manipulator_state):
         self.pb.removeConstraint(self.constraint)
         self.object = None
         self.constraint = None
 
+        self.current_state = "ORIGIN"
         return "ORIGIN"
 
     def grab(self, manipulator_state):
@@ -56,15 +56,15 @@ class ManipulatorStateMachine:
                                                    jointAxis=[1, 0, 0],
                                                    parentFramePosition=[0.075, 0, 0],
                                                    childFramePosition=[0, 0, 0])
-
+        self.current_state = "PLACE"
         return "PLACE"
 
     def lower(self, manipulator_state):
         target_state = np.array([-0.0016962233862355199, 1.2404879177129509, -0.901944524850455, 1.1624811955078364])
 
-        if self.current_state == "LOWER":
-            if in_tolerance(target_state, manipulator_state[0][:4]):
-                return "GRAB"
+        if self.current_state == "LOWER" and in_tolerance(target_state, manipulator_state[0][:4]):
+            self.current_state = "GRAB"
+            return "GRAB"
         else:
             self.control.manipulator_control(self.robot, target_state)
             self.current_state = "LOWER"
@@ -72,9 +72,9 @@ class ManipulatorStateMachine:
         return "NONE"
 
     def place(self, manipulator_state):  # TODO: Why is the structure of place() different than lower()?
-        if self.current_state == "PLACE":
-            if in_tolerance(self.target_state, manipulator_state[0][:4]):
-                return "RELEASE"
+        if self.current_state == "PLACE" and in_tolerance(self.target_state, manipulator_state[0][:4]):
+            self.current_state = "RELEASE"
+            return "RELEASE"
         else:
             self.target_state = np.array([np.pi - 0.2 * np.random.random(), 0, 0.4, 1.1])
             self.control.manipulator_control(self.robot, self.target_state)
@@ -85,9 +85,9 @@ class ManipulatorStateMachine:
     def origin(self, manipulator_state):
         target_state = np.array([5.08753421763152e-07, -1.3962637001751304, 1.0471974880549502, 0.523599283823225])
 
-        if self.current_state == "ORIGIN":
-            if in_tolerance(self.target_state, manipulator_state[0][:4]):
-                return "DONE"
+        if self.current_state == "ORIGIN" and in_tolerance(self.target_state, manipulator_state[0][:4]):
+            self.current_state = "DONE"
+            return "DONE"
         else:
             self.control.manipulator_control(self.robot, target_state)
             self.current_state = "ORIGIN"
@@ -108,8 +108,10 @@ class ManipulatorStateMachine:
             self.current_volume += 1
 
             if self.current_volume >= MAX_VOLUME:
+                self.current_state = "RETRIEVE"
                 return "RETRIEVE"
 
+            self.current_state = "DONE"
             return "DONE"
 
         elif new_state is not "NONE":
@@ -156,7 +158,7 @@ class RobotStateMachine:
         manipulator_state = state[0]
         result = self.arm_fsm.run_once(manipulator_state)
 
-        if result is "DONE":
+        if result is not "INPROCESS":
             try:
                 self.obj_states[self.target_obj] = "REMOVED"
             except KeyError:
@@ -164,17 +166,11 @@ class RobotStateMachine:
 
             self.target_obj = None
 
-            return "MOVE"
+            if result is "DONE":
+                return "MOVE"
 
-        elif result is "RETRIEVE":
-            try:
-                self.obj_states[self.target_obj] = "REMOVED"
-            except KeyError:
-                pass
-
-            self.target_obj = None
-
-            return "RETRIEVE"
+            elif result is "RETRIEVE":
+                return "RETRIEVE"
 
         return "NONE"
 
@@ -245,12 +241,12 @@ class RobotStateMachine:
             self.control.velocity_control(self.robot, 0, 0)
             self.arm_fsm.reinitialize()
             self.arm_fsm.object = self.target_obj
-
             return "PICKUP"
 
         return "NONE"
 
     def retrieve(self, state):
+
         pose, vel = state[1]
 
         return_site = [0, 0]
