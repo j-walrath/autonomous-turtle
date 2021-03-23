@@ -6,7 +6,7 @@ from control import RobotControl
 DEG_TO_RAD = np.pi/180
 MAX_VOLUME = 1
 DISTANCE_THRESHOLD = 0.3
-OBJECT_STATUS = ["ON_GROUND", "ASSIGNED", "REMOVED", "RETRIEVED"]
+OBJECT_STATUS = ["ON_GROUND", "ASSIGNED", "RECOVERED", "RETRIEVED"]
 
 
 def normalize_vector(v):
@@ -18,7 +18,6 @@ def in_tolerance(v1, v2):
 
 
 class ManipulatorStateMachine:
-    # TODO: Settle on the structure of manipulator_state
 
     def __init__(self, pb, robot_id):
         self.pb = pb
@@ -30,7 +29,7 @@ class ManipulatorStateMachine:
 
         self.handler = self.origin
         self.current_state = "NONE"
-        self.current_volume = 0  # TODO: Why did Shinkyu have this as randomly generated?
+        self.current_volume = 0
 
         self.robot = robot_id
         self.object = None
@@ -94,9 +93,6 @@ class ManipulatorStateMachine:
 
         return "NONE"
 
-    def empty_basket(self):
-        self.current_volume = 0
-
     def reinitialize(self):
         self.handler = self.lower
         self.current_state = "NONE"
@@ -141,6 +137,7 @@ class RobotStateMachine:
         self.destination = None
         self.target_obj = None
         self.obj_states = obj_states
+        self.basket = set()
 
         self.dest_dist = 0
         self.dest_timeout = 0
@@ -160,10 +157,11 @@ class RobotStateMachine:
 
         if result is not "INPROCESS":
             try:
-                self.obj_states[self.target_obj] = "REMOVED"
+                self.obj_states[self.target_obj] = "RECOVERED"
             except KeyError:
                 pass
 
+            self.basket.add(self.target_obj)
             self.target_obj = None
 
             if result is "DONE":
@@ -225,7 +223,7 @@ class RobotStateMachine:
         pose, vel = state[1]
 
         try:
-            if self.obj_states[self.target_obj] == "REMOVED":
+            if self.obj_states[self.target_obj] in ("REMOVED", "RETRIEVED"):
                 self.target_obj = None
                 return "MOVE"
 
@@ -246,17 +244,16 @@ class RobotStateMachine:
         return "NONE"
 
     def retrieve(self, state):
-
         pose, vel = state[1]
 
         return_site = [0, 0]
         return_dist = np.linalg.norm((return_site[0] - pose[0], return_site[1] - pose[1]))
 
         if return_dist > DISTANCE_THRESHOLD:
-            vl, vr = self.control.pose_control(self.robot, return_site)
+            self.control.pose_control(self.robot, return_site)
         else:
             self.control.velocity_control(self.robot, 0, 0)
-            self.arm_fsm.empty_basket()
+            self.empty_basket()
             self.set_destination(None)
             return "MOVE"
 
@@ -265,6 +262,13 @@ class RobotStateMachine:
     def set_destination(self, destination):
         self.destination = destination
         self.dest_timeout = 0
+
+    def empty_basket(self):
+        while self.basket:
+            obj = self.basket.pop()
+            self.obj_states[obj] = "RETRIEVED"
+            self.pb.removeBody(obj)
+        self.arm_fsm.current_volume = 0
 
     def run_once(self, state):
         new_state = self.handler(state)
