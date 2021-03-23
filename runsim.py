@@ -95,7 +95,7 @@ def init_states(pb):
         object_states[obj] = 'ON_GROUND'
 
     for robot in robots:
-        robot_fsms[robot] = RobotStateMachine(pb, object_states, robot, max_linear_v=1.0, max_rotational_v=2 * np.pi)
+        robot_fsms[robot] = RobotStateMachine(pb, object_states, robot, max_linear_v=1.0, max_rotational_v=2*np.pi)
 
 
 def step(pb, t):
