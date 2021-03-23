@@ -23,7 +23,6 @@ import pybullet_utils.bullet_client as pbc
 import pybullet_data
 
 from fsm import RobotStateMachine
-from control import RobotControl
 from test1 import test1
 
 logging.basicConfig(level=logging.NOTSET)
