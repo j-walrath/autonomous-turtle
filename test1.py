@@ -24,15 +24,22 @@ def test1(pb, objects, object_states, robots, robot_fsms):
     logging.debug('Object Position: (%d, %d)', obj_pos[0], obj_pos[1])
 
     logging.debug("Executing Simulation...")
-    while object_states[obj] != "REMOVED":
+
+    while object_states[obj] != "RETRIEVED":
         manipulator_state = controller.get_manipulator_state(robot)
         robot_state = controller.get_robot_state(robot)
 
         robot_fsm.run_once((manipulator_state, robot_state))
 
+        # logging.debug('Arm FSM is in mode %s', robot_fsm.arm_fsm.current_state)
+
         for _ in range(int(240 / CONTROL_FREQUENCY)):
             pb.stepSimulation()
             time.sleep(1. / 240.)
+
+    for _ in range(480):
+        pb.stepSimulation()
+        time.sleep(1. / 240.)
 
     logging.debug("Returning to Main...")
 
