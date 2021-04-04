@@ -134,6 +134,7 @@ class RobotStateMachine:
         self.handler = self.move
 
         self.robot = robot_id
+        self.current_state = "NONE"
         self.destination = None
         self.target_obj = None
         self.obj_states = obj_states
@@ -165,11 +166,14 @@ class RobotStateMachine:
             self.target_obj = None
 
             if result is "DONE":
+                self.current_state = "MOVE"
                 return "MOVE"
 
             elif result is "RETRIEVE":
+                self.current_state = "RETRIEVE"
                 return "RETRIEVE"
 
+        self.current_state = "NONE"
         return "NONE"
 
     def move(self, state):
@@ -193,6 +197,7 @@ class RobotStateMachine:
                     self.target_obj = obj
                     self.obj_states[obj] = "ASSIGNED"
                     self.servo_timeout = 0
+                    self.current_state = "VISUALSERVO"
                     return "VISUALSERVO"
 
         if self.destination is not None:
@@ -206,6 +211,7 @@ class RobotStateMachine:
                     self.control.velocity_control(self.robot, 0, 0)
                     self.set_destination(None)
 
+                    self.current_state = "NONE"
                     return "NONE"
 
             self.dest_dist = dist
@@ -217,6 +223,7 @@ class RobotStateMachine:
                 self.control.velocity_control(self.robot, 0, 0)
                 self.set_destination(None)
 
+        self.current_state = "NONE"
         return "NONE"
 
     def visual_servo(self, state):
@@ -225,12 +232,14 @@ class RobotStateMachine:
         try:
             if self.obj_states[self.target_obj] in ("REMOVED", "RETRIEVED"):
                 self.target_obj = None
+                self.current_state = "MOVE"
                 return "MOVE"
 
             obj_pos = self.control.get_object_state(self.target_obj)
 
         except KeyError:
             self.target_obj = None
+            self.current_state = "MOVE"
             return "MOVE"
 
         dist, orn, vl, vr = self.control.visual_servoing(self.robot, obj_pos, pose)
@@ -239,8 +248,10 @@ class RobotStateMachine:
             self.control.velocity_control(self.robot, 0, 0)
             self.arm_fsm.reinitialize()
             self.arm_fsm.object = self.target_obj
+            self.current_state = "PICKUP"
             return "PICKUP"
 
+        self.current_state = "NONE"
         return "NONE"
 
     def retrieve(self, state):
@@ -255,8 +266,10 @@ class RobotStateMachine:
             self.control.velocity_control(self.robot, 0, 0)
             self.empty_basket()
             self.set_destination(None)
+            self.current_state = "MOVE"
             return "MOVE"
 
+        self.current_state = "NONE"
         return "NONE"
 
     def set_destination(self, destination):
