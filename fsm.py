@@ -121,7 +121,7 @@ class RobotStateMachine:
     max_esc_timeout = 80
     max_servo_timeout = 200
     collection_sites = [((0, 0), 5)]
-    threshold_distance = 1.0
+    threshold_distance = 0.5
     gain_mag = 5.0
     gain_deg = 5.0
 
@@ -217,7 +217,9 @@ class RobotStateMachine:
             self.dest_dist = dist
 
             if self.dest_dist > DISTANCE_THRESHOLD:
-                vl, vr = self.control.pose_control(self.robot, self.destination)
+                self.control.pose_control(self.robot, self.destination)
+                self.current_state = "MOVE"
+                return "MOVE"
 
             else:
                 self.control.velocity_control(self.robot, 0, 0)
