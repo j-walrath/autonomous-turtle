@@ -1,5 +1,6 @@
 import time
 import logging
+import numpy as np
 from control import RobotControl
 import fsm
 
@@ -31,8 +32,8 @@ def test1(pb, objects, object_states, robots, robot_fsms):
 
         robot_fsm.run_once((manipulator_state, robot_state))
 
-        # logging.debug('Arm FSM is in mode %s', robot_fsm.arm_fsm.current_state)
-
+        # logging.debug('Arm FSM is in mode %s', robot_fsm.arm_fsm.current_state) logging.debug('Yaw: {:.2}
+        # pi'.format(pb.getEulerFromQuaternion(pb.getBasePositionAndOrientation(robot)[1])[2]/np.pi))
         for _ in range(int(240 / CONTROL_FREQUENCY)):
             pb.stepSimulation()
             time.sleep(1. / 240.)
