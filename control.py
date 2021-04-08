@@ -242,3 +242,15 @@ class RobotControl:
         self.velocity_control(robot_id, linear_velocity, rotational_velocity)
 
         return (np.abs(distance_to_target), np.abs(orientation_to_target), linear_velocity, rotational_velocity)
+
+    def measure(self, robot_id, objects, radius=0.5, noise=None, sigma=0.2):
+        pose, v = self.get_robot_state()
+        x, y = pose[0:2]
+
+        count = 0
+        for obj in objects:
+            u, v = self.get_object_state(obj)
+            if x-radius <= u <= x+radius and y-radius <= v <= y+radius and objects[obj] not in ("RECOVERED", "RETRIEVED"):
+                count += 1
+
+        return np.random.default_rng().normal(count, sigma) if noise == "GAUSSIAN" else count
