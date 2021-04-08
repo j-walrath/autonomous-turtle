@@ -6,7 +6,7 @@ import fsm
 CONTROL_FREQUENCY = 40
 
 
-def test1(pb, objects, object_states, robots, robot_fsms):
+def visit_cells(pb, objects, object_states, robots, robot_fsms):
     logging.info('Running Single Robot Movement Test...')
 
     controller = RobotControl(pb)
@@ -19,15 +19,16 @@ def test1(pb, objects, object_states, robots, robot_fsms):
     logging.debug("Executing Simulation...")
 
     for i in range(-5, 6):
-        for j in range(-5, 6):
+        r = range(-5, 6) if i & 1 else range(5, -6, -1)
+        for j in r:
             robot_fsm.set_destination((i, j))
-            logging.debug("Moving to Cell ({}, {})...".format(i, j))
+            logging.debug("Moving to Location ({}, {})...".format(i, j))
 
             while True:
                 manipulator_state = controller.get_manipulator_state(robot)
                 robot_state = controller.get_robot_state(robot)
 
-                robot_fsm.run_once(manipulator_state, robot_state)
+                robot_fsm.run_once((manipulator_state, robot_state))
 
                 for _ in range(int(240 / CONTROL_FREQUENCY)):
                     pb.stepSimulation()
@@ -35,6 +36,27 @@ def test1(pb, objects, object_states, robots, robot_fsms):
 
                 if robot_fsm.current_state == "NONE":
                     break
+
+    # d = (-2, 2)
+    # robot_fsm.set_destination(d)
+    # logging.debug("Moving to Location {}...".format(d))
+
+    while True:
+        manipulator_state = controller.get_manipulator_state(robot)
+        robot_state = controller.get_robot_state(robot)
+
+        robot_fsm.run_once((manipulator_state, robot_state))
+
+        for _ in range(int(240 / CONTROL_FREQUENCY)):
+            pb.stepSimulation()
+            time.sleep(1. / 240.)
+
+        # logging.debug("FSM State: {}".format(robot_fsm.current_state))
+        # if robot_fsm.destination is None:
+        #     break
+
+        if robot_fsm.current_state == "NONE":
+            break
 
     for _ in range(480):
         pb.stepSimulation()
