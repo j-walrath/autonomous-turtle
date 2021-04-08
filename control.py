@@ -52,13 +52,13 @@ class RobotControl:
 
     def get_object_state(self, object_id):
         position, orientation = self.pb_client.getBasePositionAndOrientation(bodyUniqueId=object_id)
-        return (position[0], position[1])
+        return position[0], position[1]
 
     def get_manipulator_state(self, robot_id):
         joint_angles, velocity, _, _ = zip(
             *self.pb_client.getJointStates(bodyUniqueId=robot_id, jointIndices=range(11 - 4, 15 - 4)))
 
-        return (joint_angles, velocity)
+        return joint_angles, velocity
 
     def get_robot_state(self, robot_id):
         position, orientation = self.pb_client.getBasePositionAndOrientation(bodyUniqueId=robot_id)
@@ -68,7 +68,7 @@ class RobotControl:
         linear_velocity, angular_velocity = self.pb_client.getBaseVelocity(bodyUniqueId=robot_id)
         velocity = (linear_velocity[0], linear_velocity[1], angular_velocity[2])
 
-        return (pose, velocity)
+        return pose, velocity
 
     def gripper_control(self, robot_id, gripper_target_state):
         for i, value in enumerate(gripper_target_state):
@@ -173,6 +173,7 @@ class RobotControl:
 
         return v, w
 
+    # CURRENTLY DEPRECATED
     def pose_control_oa_v1(self, robot_id, pose_dest, pose_robot, laser_scan_data=[], gain_oa=2.0, dist_threshold=.8):
         vec_to_dest = (pose_dest[0] - pose_robot[0],
                        pose_dest[1] - pose_robot[1])
