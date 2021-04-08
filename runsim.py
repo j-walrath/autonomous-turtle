@@ -24,6 +24,7 @@ import pybullet_data
 
 from fsm import RobotStateMachine
 from test1 import test1
+from visit_cells import visit_cells
 
 logging.basicConfig(level=logging.NOTSET)
 
@@ -94,7 +95,7 @@ def init_states(pb):
         object_states[obj] = 'ON_GROUND'
 
     for robot in robots:
-        robot_fsms[robot] = RobotStateMachine(pb, object_states, robot, max_linear_v=1.0, max_rotational_v=2*np.pi)
+        robot_fsms[robot] = RobotStateMachine(pb, object_states, robot, max_linear_v=1.75)
 
 
 def step(pb, t):
@@ -110,7 +111,7 @@ def step(pb, t):
 if __name__ == "__main__":
     numObjects = 1
     numRobots = 1
-    sequence = test1
+    sequence = visit_cells
 
     logging.info('Initializing GUI Simulator...')
     pb = init_sim(numObjects, numRobots)
