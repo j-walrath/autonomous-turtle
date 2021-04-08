@@ -244,7 +244,7 @@ class RobotControl:
         return np.abs(distance_to_target), np.abs(orientation_to_target), linear_velocity, rotational_velocity
 
     def measure(self, robot_id, objects, r=0.5, noise=None, sigma=0.2):
-        pose, v = self.get_robot_state()
+        pose, v = self.get_robot_state(robot_id)
         x, y = pose[0:2]
 
         count = 0
