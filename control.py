@@ -1,6 +1,7 @@
 import numpy as np
-from numpy.linalg import norm as euclidean_norm
+from numpy.linalg import norm
 from scipy.linalg import logm
+import logging
 
 import pybullet as pb
 
@@ -13,7 +14,7 @@ def euler_to_rot_mat(yaw):
 
 
 def normalize_vector(v):
-    return v / np.linalg.norm(v)
+    return v / norm(v)
 
 
 def compute_rotational_velocity(yaw_robot, yaw_target):
@@ -22,16 +23,29 @@ def compute_rotational_velocity(yaw_robot, yaw_target):
     relative_orientation_mat = np.array([[np.cos(relative_orientation), -np.sin(relative_orientation)],
                                          [np.sin(relative_orientation), np.cos(relative_orientation)]])
 
-    return logm(relative_orientation_mat)[1, 0]
+    return 2*logm(relative_orientation_mat)[1, 0]
+
+
+def curvature(r, theta, delta):
+    k1 = 1
+    k2 = 5
+    return -(1/r)*(k2*(delta-np.arctan(-k1*theta)) + (1 + k1/(1+(k1*theta)**2))*np.sin(delta))
+
+
+def compute_v(k, vmax):
+    beta = 0.4
+    gamma = 1
+    return vmax / (1 + (beta*abs(k)**gamma))
 
 
 class RobotControl:
-    minimum_linear_velocity = .1
+    minimum_linear_velocity = 0
     critical_distance = .5
+    activation_threshold = 15 * DEG_TO_RAD
     object_distance_offset = 0.16428811071136287
     object_distance_offset = 0.25
 
-    def __init__(self, pb_client, max_linear_velocity=.2, max_rotational_velocity=5.0):
+    def __init__(self, pb_client, max_linear_velocity=1, max_rotational_velocity=5.0):
         self.pb_client = pb_client
         self.max_linear_velocity = max_linear_velocity
         self.max_rotational_velocity = max_rotational_velocity
@@ -49,7 +63,7 @@ class RobotControl:
     def get_robot_state(self, robot_id):
         position, orientation = self.pb_client.getBasePositionAndOrientation(bodyUniqueId=robot_id)
         _, _, yaw = pb.getEulerFromQuaternion(orientation)
-        pose = (position[0], position[1], pb.getEulerFromQuaternion(orientation)[2])
+        pose = (position[0], position[1], yaw)
 
         linear_velocity, angular_velocity = self.pb_client.getBaseVelocity(bodyUniqueId=robot_id)
         velocity = (linear_velocity[0], linear_velocity[1], angular_velocity[2])
@@ -125,7 +139,7 @@ class RobotControl:
     def get_closest_point(self, robot1_id, robot2_id, robot1_pose, distance):
         closest_points = self.pb_client.getClosestPoints(bodyA=robot1_id, bodyB=robot2_id, distance=distance)
 
-        distances_to_points = [euclidean_norm((point[5][0] - point[6][0], point[5][1] - point[6][1]))
+        distances_to_points = [norm((point[5][0] - point[6][0], point[5][1] - point[6][1]))
                                for point in closest_points if point[3] not in [0, 1] and point[4] not in [0, 1]]
 
         if len(distances_to_points) == 0:
@@ -135,28 +149,29 @@ class RobotControl:
         return closest_points[closest_point_index][6]
 
     def pose_control(self, robot_id, destination):
-        robot_pose, robot_velocity = self.get_robot_state(robot_id=robot_id)
+        pose, v_current = self.get_robot_state(robot_id=robot_id)
+        yaw = pose[2]
 
-        vector_to_destination = (destination[0] - robot_pose[0],
-                                 destination[1] - robot_pose[1])
-        unit_vector_to_destination = normalize_vector(vector_to_destination)
-        unit_vector_yaw = np.array((np.cos(robot_pose[2]), np.sin(robot_pose[2])))
+        # vector from robot to target
+        r = np.array(destination) - np.array(pose[0:2])
 
-        correlation_coefficient = np.dot(unit_vector_yaw, unit_vector_to_destination)
-        distance_to_destination = euclidean_norm(vector_to_destination)
+        # orientation of target w.r.t. line of sight from robot to target (-pi, pi]
+        theta = 0
 
-        linear_velocity = min(self.max_linear_velocity, correlation_coefficient * distance_to_destination)
-        linear_velocity = max(self.minimum_linear_velocity, linear_velocity)
+        # orientation of robot w.r.t. line of sight (-pi, pi]
+        delta = yaw - np.arctan2(r[1], r[0])
+        if delta > np.pi:
+            delta -= 2 * np.pi
+        elif delta <= -np.pi:
+            delta += 2 * np.pi
 
-        orientation_to_destination = np.arctan2(destination[1] - robot_pose[1], destination[0] - robot_pose[0])
-        rotational_velocity = compute_rotational_velocity(robot_pose[2], orientation_to_destination)
+        k = curvature(norm(r), theta, delta)
+        v = compute_v(k, self.max_linear_velocity)
+        w = k * v
 
-        rotational_velocity = min(self.max_rotational_velocity, rotational_velocity)
-        rotational_velocity = max(-self.max_rotational_velocity, rotational_velocity)
+        self.velocity_control(robot_id, linear_velocity=v, rotational_velocity=w)
 
-        self.velocity_control(robot_id, linear_velocity, rotational_velocity)
-
-        return linear_velocity, rotational_velocity
+        return v, w
 
     def pose_control_oa_v1(self, robot_id, pose_dest, pose_robot, laser_scan_data=[], gain_oa=2.0, dist_threshold=.8):
         vec_to_dest = (pose_dest[0] - pose_robot[0],
