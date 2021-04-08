@@ -27,14 +27,22 @@ def compute_rotational_velocity(yaw_robot, yaw_target):
 
 
 def curvature(r, theta, delta):
+    # ratio of rate of change in theta to the rate of change in r
     k1 = 1
+
+    # timescale factor between fast subsystem and slow manifold
     k2 = 5
+
     return -(1/r)*(k2*(delta-np.arctan(-k1*theta)) + (1 + k1/(1+(k1*theta)**2))*np.sin(delta))
 
 
 def compute_v(k, vmax):
+    # higher beta = velocity drops more quickly as a function of k
     beta = 0.4
+
+    # higher gamma = sharper peak for v/vmax vs k curve
     gamma = 1
+
     return vmax / (1 + (beta*abs(k)**gamma))
 
 
