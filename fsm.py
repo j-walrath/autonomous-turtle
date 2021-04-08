@@ -232,7 +232,7 @@ class RobotStateMachine:
         pose, vel = state[1]
 
         try:
-            if self.obj_states[self.target_obj] in ("REMOVED", "RETRIEVED"):
+            if self.obj_states[self.target_obj] in ("RECOVERED", "RETRIEVED"):
                 self.target_obj = None
                 self.current_state = "MOVE"
                 return "MOVE"
