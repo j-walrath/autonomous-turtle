@@ -223,25 +223,27 @@ class RobotControl:
         return linear_vel, rot_vel
 
     # Visual servoing for object pickup
-    def visual_servoing(self, robot_id, target_position, pose):
-        distance_to_target = np.linalg.norm(
-            (target_position[0] - pose[0], target_position[1] - pose[1])) - self.object_distance_offset
-        orientation_to_target = np.arctan2(target_position[1] - pose[1], target_position[0] - pose[0]) - pose[2]
+    def visual_servoing(self, robot_id, target_pos, pose):
+        # vector from robot to object
+        r = norm((target_pos[0] - pose[0], target_pos[1] - pose[1])) - self.object_distance_offset
 
-        rotational_velocity = min(self.max_rotational_velocity, compute_rotational_velocity(pose[2], np.arctan2(
-            target_position[1] - pose[1], target_position[0] - pose[0])))
-        rotational_velocity = max(-self.max_rotational_velocity, rotational_velocity)
+        # orientation of robot w.r.t. line of sight
+        delta = pose[2] - np.arctan2(target_pos[1] - pose[1], target_pos[0] - pose[0])
+        if delta > np.pi:
+            delta -= 2 * np.pi
+        elif delta <= -np.pi:
+            delta += 2 * np.pi
 
-        if np.abs(rotational_velocity) < 0.2:
-            linear_velocity = min(self.max_linear_velocity, 1.0 * distance_to_target)
-            linear_velocity = max(-self.max_linear_velocity, linear_velocity)
+        # orientation of target w.r.t. line of sight
+        theta = 0
 
-        else:
-            linear_velocity = 0
+        k = curvature(norm(r), theta, delta)
+        v = compute_v(k, self.max_linear_velocity)
+        w = k * v
 
-        self.velocity_control(robot_id, linear_velocity, rotational_velocity)
+        self.velocity_control(robot_id, linear_velocity=v, rotational_velocity=w)
 
-        return np.abs(distance_to_target), np.abs(orientation_to_target), linear_velocity, rotational_velocity
+        return r, delta, v, w
 
     def measure(self, robot_id, objects, r=0.5, noise=None, sigma=0.1):
         pose, v = self.get_robot_state(robot_id)
