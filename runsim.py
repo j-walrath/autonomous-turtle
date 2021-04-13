@@ -54,7 +54,7 @@ def init_sim(numObjects=10, numRobots=2):  # PYBULLET INIT
 
     # LOAD PLANE
     pb.loadURDF(planeModel, basePosition=[0, 0, 0], globalScaling=1.0)
-    pb.changeDynamics(0, -1, lateralFriction=2.0, spinningFriction=0.03, rollingFriction=0.03, restitution=0.5)
+    pb.changeDynamics(0, -1, lateralFriction=3.0, spinningFriction=0.03, rollingFriction=0.03, restitution=0.5)
 
     # LOAD OBJECTS
     load_objects(pb, DEFAULT_BOUNDS[0], DEFAULT_BOUNDS[1], numObjects)
@@ -90,8 +90,6 @@ def load_robots(pb, lBound, uBound, numRobots):  # LOAD ROBOT(S)
         for i in range(numRobots):
             robots.append(pb.loadURDF(robotModel, [coords[i, 0], coords[i, 1], 0.5], orn))
             pb.changeDynamics(robots[-1], -1, maxJointVelocity=300, lateralFriction=1.0, rollingFriction=0.03, restitution=0.7)
-            for j in range(4):
-                pb.changeDynamics(robots[-1], j, lateralFriction=1.0, rollingFriction=0.03, restitution=0.7)
 
 
 def init_states(pb):
@@ -99,7 +97,7 @@ def init_states(pb):
         object_states[obj] = 'ON_GROUND'
 
     for robot in robots:
-        robot_fsms[robot] = RobotStateMachine(pb, object_states, robot, max_linear_v=3)
+        robot_fsms[robot] = RobotStateMachine(pb, object_states, robot, max_linear_v=5)
 
 
 def step(pb, t):
