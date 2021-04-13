@@ -31,7 +31,7 @@ def curvature(r, theta, delta):
     k1 = 1
 
     # timescale factor between fast subsystem and slow manifold
-    k2 = 5
+    k2 = 10
 
     return -(1/r)*(k2*(delta-np.arctan(-k1*theta)) + (1 + k1/(1+(k1*theta)**2))*np.sin(delta))
 
@@ -243,7 +243,7 @@ class RobotControl:
 
         return np.abs(distance_to_target), np.abs(orientation_to_target), linear_velocity, rotational_velocity
 
-    def measure(self, robot_id, objects, r=0.5, noise=None, sigma=0.2):
+    def measure(self, robot_id, objects, r=0.5, noise=None, sigma=0.1):
         pose, v = self.get_robot_state(robot_id)
         x, y = pose[0:2]
 
