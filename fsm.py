@@ -183,22 +183,22 @@ class RobotStateMachine:
             self.esc_timeout += 1
 
         # if an object is detected, transition to visual servoing
-        if self.obj_states is not None and self.esc_timeout >= self.max_esc_timeout:
+        # if self.obj_states is not None and self.esc_timeout >= self.max_esc_timeout:
 
             # find the closest object (this feels so inefficient) TODO: make this faster
-            for obj in self.obj_states.keys():
-                if self.obj_states[obj] != "ON_GROUND": continue
-
-                obj_pos, orn = self.pb.getBasePositionAndOrientation(bodyUniqueId=obj)
-                obj_vector = np.array([obj_pos[0] - pose[0], obj_pos[1] - pose[1]])
-
-                if np.linalg.norm(obj_vector) <= 0.5:
-                    self.control.velocity_control(self.robot, 0, 0)
-                    self.target_obj = obj
-                    self.obj_states[obj] = "ASSIGNED"
-                    self.servo_timeout = 0
-                    self.current_state = "VISUALSERVO"
-                    return "VISUALSERVO"
+            # for obj in self.obj_states.keys():
+            #     if self.obj_states[obj] != "ON_GROUND": continue
+            #
+            #     obj_pos, orn = self.pb.getBasePositionAndOrientation(bodyUniqueId=obj)
+            #     obj_vector = np.array([obj_pos[0] - pose[0], obj_pos[1] - pose[1]])
+            #
+            #     if np.linalg.norm(obj_vector) <= 0.5:
+            #         self.control.velocity_control(self.robot, 0, 0)
+            #         self.target_obj = obj
+            #         self.obj_states[obj] = "ASSIGNED"
+            #         self.servo_timeout = 0
+            #         self.current_state = "VISUALSERVO"
+            #         return "VISUALSERVO"
 
         if self.destination is not None:
             dist = np.linalg.norm((self.destination[0] - pose[0], self.destination[1] - pose[1]))
