@@ -51,7 +51,7 @@ class RobotControl:
     critical_distance = .5
     activation_threshold = 15 * DEG_TO_RAD
     object_distance_offset = 0.16428811071136287
-    object_distance_offset = 0.25
+    object_distance_offset = 0.3
 
     def __init__(self, pb_client, max_linear_velocity=1, max_rotational_velocity=5.0):
         self.pb_client = pb_client
