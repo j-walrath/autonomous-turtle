@@ -18,24 +18,45 @@ def visit_cells(pb, objects, object_states, robots, robot_fsms):
 
     logging.debug("Executing Simulation...")
 
-    for i in range(-5, 6):
-        r = range(-5, 6) if i & 1 else range(5, -6, -1)
-        for j in r:
-            robot_fsm.set_destination((i, j))
-            logging.debug("Moving to Location ({}, {})...".format(i, j))
+    # for i in range(-5, 6):
+    #     r = range(-5, 6) if i & 1 else range(5, -6, -1)
+    #     for j in r:
+    #         robot_fsm.set_destination((i, j))
+    #         logging.debug("Moving to Location ({}, {})...".format(i, j))
+    #
+    #         while True:
+    #             manipulator_state = controller.get_manipulator_state(robot)
+    #             robot_state = controller.get_robot_state(robot)
+    #
+    #             robot_fsm.run_once((manipulator_state, robot_state))
+    #
+    #             for _ in range(int(240 / CONTROL_FREQUENCY)):
+    #                 pb.stepSimulation()
+    #                 time.sleep(1. / 240.)
+    #
+    #             if robot_fsm.current_state == "NONE":
+    #                 break
 
-            while True:
-                manipulator_state = controller.get_manipulator_state(robot)
-                robot_state = controller.get_robot_state(robot)
+    targets = [(0, 2), (3, 2), (-3, -3), (0, 0), (2, -4), (1, 3), (-2, 2), (0, 0)]
+    for target in targets:
+        robot_fsm.set_destination(target)
+        logging.debug("Moving to Location ({}, {})...".format(target[0], target[1]))
 
-                robot_fsm.run_once((manipulator_state, robot_state))
+        while True:
+            manipulator_state = controller.get_manipulator_state(robot)
+            robot_state = controller.get_robot_state(robot)
 
-                for _ in range(int(240 / CONTROL_FREQUENCY)):
+            robot_fsm.run_once((manipulator_state, robot_state))
+
+            for _ in range(int(240 / CONTROL_FREQUENCY)):
+                pb.stepSimulation()
+                time.sleep(1. / 240.)
+
+            if robot_fsm.current_state == "NONE":
+                for _ in range(240):
                     pb.stepSimulation()
                     time.sleep(1. / 240.)
-
-                if robot_fsm.current_state == "NONE":
-                    break
+                break
 
     # d = (-2, 2)
     # robot_fsm.set_destination(d)
