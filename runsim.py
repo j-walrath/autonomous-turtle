@@ -113,18 +113,18 @@ def step(pb, t):
 if __name__ == "__main__":
     numObjects = 0
     numRobots = 1
-    sequence = visit_cells
+    sequence = measure_corners
 
     logging.info('Initializing GUI Simulator...')
     pb = init_sim(numObjects, numRobots)
 
-    # coords = [(-4.8, -4.8), (-4.8, -4.6), (-4.8, -4.4), (-4.6, -4.8), (-4.4, -4.8),
-    #           (-4.8, 4.8), (-4.8, 4.6), (-4.8, 4.4), (-4.6, 4.8), (-4.4, 4.8),
-    #           (4.8, 4.8), (4.8, 4.6), (4.8, 4.4), (4.6, 4.8), (4.4, 4.8),
-    #           (4.8, -4.8), (4.8, -4.6), (4.8, -4.4), (4.6, -4.8), (4.4, -4.8)]
-    # for c in coords:
-    #     objects.append(pb.loadURDF(objModel, basePosition=[c[0], c[1], 0.3], globalScaling=1.0))
-    #     pb.setCollisionFilterGroupMask(objects[-1], -1, 0, 0)
+    coords = [(-3.8, -3.8), (-3.8, -3.6), (-3.8, -3.4), (-3.6, -3.8), (-3.4, -3.8),
+              (-3.8, 3.8), (-3.8, 3.6), (-3.8, 3.4), (-3.6, 3.8), (-3.4, 3.8),
+              (3.8, 3.8), (3.8, 3.6), (3.8, 3.4), (3.6, 3.8), (3.4, 3.8),
+              (3.8, -3.8), (3.8, -3.6), (3.8, -3.4), (3.6, -3.8), (3.4, -3.8)]
+    for c in coords:
+        objects.append(pb.loadURDF(objModel, basePosition=[c[0], c[1], 0.3], globalScaling=1.0))
+        # pb.setCollisionFilterGroupMask(objects[-1], -1, 0, 0)
 
     step(pb, 100)
 
