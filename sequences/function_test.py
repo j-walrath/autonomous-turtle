@@ -67,7 +67,7 @@ def function_test(pb, objects, object_states, robots, robot_fsms):
                 wait(pb, 100)
 
                 robot_fsm.set_destination((0, 0))
-                logging.debug("Returning to Origin...".format(cells[i]))
+                logging.debug("Returning to Origin...")
                 while True:
                     manipulator_state = controller.get_manipulator_state(robot)
                     robot_state = controller.get_robot_state(robot)
@@ -97,18 +97,19 @@ def function_test(pb, objects, object_states, robots, robot_fsms):
 
             if robot_fsm.current_state == "NONE":
 
-                robot_fsm.set_destination((0, 0))
-                logging.debug("Returning to Origin...".format(cells[i]))
-                while True:
-                    manipulator_state = controller.get_manipulator_state(robot)
-                    robot_state = controller.get_robot_state(robot)
-
-                    robot_fsm.run_once((manipulator_state, robot_state))
-
-                    wait(pb, int(240 / CONTROL_FREQUENCY))
-
-                    if robot_fsm.current_state == "NONE":
-                        break
+                # Only needed if utils.control.MAX_VOLUME is not 1
+                # robot_fsm.set_destination((0, 0))
+                # logging.debug("Returning to Origin...")
+                # while True:
+                #     manipulator_state = controller.get_manipulator_state(robot)
+                #     robot_state = controller.get_robot_state(robot)
+                #
+                #     robot_fsm.run_once((manipulator_state, robot_state))
+                #
+                #     wait(pb, int(240 / CONTROL_FREQUENCY))
+                #
+                #     if robot_fsm.current_state == "NONE":
+                #         break
                 break
 
     wait(pb, 100)
