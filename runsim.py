@@ -26,6 +26,7 @@ from utils.fsm import RobotStateMachine
 from sequences.test1 import test1
 from sequences.corner_measurements import measure_corners
 from sequences.visit_cells import visit_cells
+from sequences.function_test import function_test
 
 logging.basicConfig(level=logging.NOTSET)
 
@@ -38,6 +39,7 @@ robotModel = "./urdf_models/tb_openmanipulator/trash_collect_robot_four_wheel.ur
 
 # CONSTANTS & GLOBAL VARIABLES
 DEFAULT_BOUNDS = (-5, 5)   # area bounds for sim world
+COLLISION = False
 
 objects = []               # list of body unique object IDs
 object_states = {}         # key: object ID, val: string state of object
@@ -72,7 +74,13 @@ def load_objects(pb, lBound, uBound, numObjects):  # LOAD OBJECTS
     coords = (upper - lower) * rng.random(size=(numObjects, 2)) + lower
     for i in range(numObjects):
         objects.append(pb.loadURDF(objModel, basePosition=[coords[i, 0], coords[i, 1], 0.3], globalScaling=1.0))
-        # pb.setCollisionFilterGroupMask(objects[-1], -1, 0, 0)
+
+        if not COLLISION:
+            # Do not collide with robots or other objects
+            pb.setCollisionFilterGroupMask(objects[-1], -1, 0, 0)
+
+            # Do collide with the ground plane
+            pb.setCollisionFilterPair(objects[-1], 0, -1, -1, 1)
 
 
 def load_robots(pb, lBound, uBound, numRobots):  # LOAD ROBOT(S)
@@ -111,20 +119,26 @@ def step(pb, t):
 # TODO: Add live stats to the GUI
 # TODO: Record frames/stats and save to output
 if __name__ == "__main__":
-    numObjects = 1
+    numObjects = 0
     numRobots = 1
-    sequence = test1
+    sequence = function_test
 
     logging.info('Initializing GUI Simulator...')
     pb = init_sim(numObjects, numRobots)
 
-    # coords = [(-3.8, -3.8), (-3.8, -3.6), (-3.8, -3.4), (-3.6, -3.8), (-3.4, -3.8),
-    #           (-3.8, 3.8), (-3.8, 3.6), (-3.8, 3.4), (-3.6, 3.8), (-3.4, 3.8),
-    #           (3.8, 3.8), (3.8, 3.6), (3.8, 3.4), (3.6, 3.8), (3.4, 3.8),
-    #           (3.8, -3.8), (3.8, -3.6), (3.8, -3.4), (3.6, -3.8), (3.4, -3.8)]
-    # for c in coords:
-    #     objects.append(pb.loadURDF(objModel, basePosition=[c[0], c[1], 0.3], globalScaling=1.0))
-    #     pb.setCollisionFilterGroupMask(objects[-1], -1, 0, 0)
+    coords = [(-3.8, -3.8), (-3.8, -3.6), (-3.8, -3.4), (-3.6, -3.8), (-3.4, -3.8),
+              (-3.8, 3.8), (-3.8, 3.6), (-3.8, 3.4), (-3.6, 3.8), (-3.4, 3.8),
+              (3.8, 3.8), (3.8, 3.6), (3.8, 3.4), (3.6, 3.8), (3.4, 3.8),
+              (3.8, -3.8), (3.8, -3.6), (3.8, -3.4), (3.6, -3.8), (3.4, -3.8)]
+    for c in coords:
+        objects.append(pb.loadURDF(objModel, basePosition=[c[0], c[1], 0.3], globalScaling=1.0))
+
+        if not COLLISION:
+            # Do not collide with robots or other objects
+            pb.setCollisionFilterGroupMask(objects[-1], -1, 0, 0)
+
+            # Do collide with the ground plane
+            pb.setCollisionFilterPair(objects[-1], 0, -1, -1, 1)
 
     step(pb, 100)
 
