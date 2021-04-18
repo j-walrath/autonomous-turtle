@@ -4,7 +4,7 @@ import pybullet as p
 from utils.control import RobotControl
 
 DEG_TO_RAD = np.pi/180
-MAX_VOLUME = 1
+MAX_VOLUME = 10
 DISTANCE_THRESHOLD = 0.3
 OBJECT_STATUS = ["ON_GROUND", "ASSIGNED", "RECOVERED", "RETRIEVED"]
 
@@ -117,9 +117,9 @@ class ManipulatorStateMachine:
 
 
 class RobotStateMachine:
-    max_dest_timeout = 200
+    max_dest_timeout = 1000
     max_esc_timeout = 80
-    max_servo_timeout = 200
+    max_servo_timeout = 500
     collection_sites = [((0, 0), 5)]
     threshold_distance = 0.5
     gain_mag = 5.0
@@ -160,7 +160,8 @@ class RobotStateMachine:
             try:
                 self.obj_states[self.target_obj] = "RECOVERED"
             except KeyError:
-                pass
+                self.current_state = "NONE"
+                return "NONE"
 
             self.basket.add(self.target_obj)
             self.target_obj = None
@@ -173,8 +174,8 @@ class RobotStateMachine:
                 self.current_state = "RETRIEVE"
                 return "RETRIEVE"
 
-        self.current_state = "NONE"
-        return "NONE"
+        self.current_state = "PICKUP"
+        return "PICKUP"
 
     def move(self, state):
         pose, vel = state[1]
@@ -189,7 +190,6 @@ class RobotStateMachine:
                 if self.dest_timeout >= self.max_dest_timeout:
                     self.control.velocity_control(self.robot, 0, 0)
                     self.set_destination(None)
-
                     self.current_state = "NONE"
                     return "NONE"
 
@@ -230,6 +230,19 @@ class RobotStateMachine:
 
         dist, orn, _, _ = self.control.visual_servoing(self.robot, obj_pos, pose)
 
+        if self.dest_dist <= dist:
+            self.servo_timeout += 1
+
+        if self.servo_timeout >= self.max_servo_timeout:
+            self.control.velocity_control(self.robot, 0, 0)
+            self.set_destination(None)
+            self.target_obj = None
+            self.servo_timeout = 0
+            self.current_state = "NONE"
+            return "NONE"
+
+        self.dest_dist = dist
+
         if dist <= 0.05 and orn < 10 * np.pi / 180:
             self.control.velocity_control(self.robot, 0, 0)
             self.arm_fsm.reinitialize()
@@ -237,8 +250,9 @@ class RobotStateMachine:
             self.current_state = "PICKUP"
             return "PICKUP"
 
-        self.current_state = "NONE"
-        return "NONE"
+        else:
+            self.current_state = "VISUALSERVO"
+            return "VISUALSERVO"
 
     def retrieve(self, state):
         pose, vel = state[1]
@@ -248,6 +262,9 @@ class RobotStateMachine:
 
         if return_dist > DISTANCE_THRESHOLD:
             self.control.pose_control(self.robot, return_site)
+            self.current_state = "RETRIEVE"
+            return "RETRIEVE"
+
         else:
             self.control.velocity_control(self.robot, 0, 0)
             self.empty_basket()
@@ -256,9 +273,6 @@ class RobotStateMachine:
             # TODO: Verify that this should just read 'self.current_state = "NONE"' followed by 'return "NONE"'
             self.current_state = "MOVE"
             return "MOVE"
-
-        self.current_state = "NONE"
-        return "NONE"
 
     def set_destination(self, destination):
         self.destination = destination
