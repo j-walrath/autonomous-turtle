@@ -1,26 +1,11 @@
 import time
 import logging
+from math import floor
 from utils.control import RobotControl
 from utils import fsm
 
 CONTROL_FREQUENCY = 40
-RADIUS = 0.5
-
-
-def m_actual(controller, robot, objects, object_states):
-    count = 0
-    pose, _ = controller.get_robot_state(robot)
-    x, y = pose[0:2]
-
-    for obj in objects:
-        u, v = controller.get_object_state(obj)
-
-        if x - RADIUS <= u <= x + RADIUS \
-                and y - RADIUS <= v <= y + RADIUS \
-                and object_states[obj] not in ("RECOVERED", "RETRIEVED"):
-            count += 1
-
-    return count
+RADIUS = 1.0
 
 
 def measure_corners(pb, objects, object_states, robots, robot_fsms):
@@ -58,7 +43,7 @@ def measure_corners(pb, objects, object_states, robots, robot_fsms):
                     time.sleep(1. / 240.)
 
                 m = controller.measure(robot, robot_fsm.obj_states, r=RADIUS, noise="GAUSSIAN")
-                actual = m_actual(controller, robot, objects, object_states)
+                actual = controller.measure(robot, robot_fsm.obj_states, r=RADIUS)
                 logging.debug("Robot measured {} objects (Actual = {}).".format(m, actual))
 
                 for _ in range(100):
