@@ -39,7 +39,7 @@ def measure_corners(pb, objects, object_states, robots, robot_fsms):
     targets = [(3.5, 3.5), (3.5, -3.5), (-3.5, -3.5), (-3.5, 3.5)]
 
     for i in range(len(cells)):
-        robot_fsm.set_destination((targets[i][0], targets[i][1]))
+        robot_fsm.set_destination(targets[i])
         logging.debug("Moving to Cell {}...".format(cells[i]))
 
         while True:
