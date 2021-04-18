@@ -47,6 +47,7 @@ class ManipulatorStateMachine:
         return "ORIGIN"
 
     def grab(self, manipulator_state):
+        self.pb.setCollisionFilterGroupMask(self.object, -1, 1, 1)
         self.constraint = self.pb.createConstraint(parentBodyUniqueId=self.robot,
                                                    parentLinkIndex=10,
                                                    childBodyUniqueId=self.object,
