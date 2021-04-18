@@ -1,6 +1,7 @@
 import numpy as np
 from numpy.linalg import norm
 from scipy.linalg import logm
+from math import floor
 import logging
 
 import pybullet as pb
@@ -245,14 +246,15 @@ class RobotControl:
 
         return r, delta, v, w
 
-    def measure(self, robot_id, objects, r=0.5, noise=None, sigma=0.1):
+    # measures the objects in the same 1m^2 cell as the robot (with some noise)
+    def measure(self, robot_id, objects, r=1, noise=None, sigma=0.1):
         pose, v = self.get_robot_state(robot_id)
-        x, y = pose[0:2]
+        x, y = map(floor, pose[0:2])
 
         count = 0
         for obj in objects:
             u, v = self.get_object_state(obj)
-            if x-r <= u <= x+r and y-r <= v <= y+r and objects[obj] not in ("RECOVERED", "RETRIEVED"):
+            if x <= u <= x+r and y <= v <= y+r and objects[obj] not in ("RECOVERED", "RETRIEVED"):
                 count += 1
 
         return int(np.random.default_rng().normal(count, sigma)) if noise == "GAUSSIAN" else count
