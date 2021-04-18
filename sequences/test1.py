@@ -1,8 +1,7 @@
 import time
 import logging
-import numpy as np
-from control import RobotControl
-import fsm
+from utils.control import RobotControl
+from utils import fsm
 
 CONTROL_FREQUENCY = 40
 
