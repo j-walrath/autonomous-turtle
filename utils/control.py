@@ -247,10 +247,9 @@ class RobotControl:
         return r, delta, v, w
 
     # measures the objects in the same 1m^2 cell as the robot (with some noise)
-    def measure(self, robot_id, objects, r=1, noise=None, sigma=0.1):
+    def measure(self, robot_id, objects, r=1.0, noise=None, sigma=0.1):
         pose, v = self.get_robot_state(robot_id)
         x, y = map(floor, pose[0:2])
-
         count = 0
         for obj in objects:
             u, v = self.get_object_state(obj)
