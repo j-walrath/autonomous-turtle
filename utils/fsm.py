@@ -1,7 +1,7 @@
 import numpy as np
 import pybullet as p
 
-from control import RobotControl
+from utils.control import RobotControl
 
 DEG_TO_RAD = np.pi/180
 MAX_VOLUME = 1
