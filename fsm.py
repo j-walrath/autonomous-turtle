@@ -179,27 +179,6 @@ class RobotStateMachine:
     def move(self, state):
         pose, vel = state[1]
 
-        if self.esc_timeout < self.max_esc_timeout:
-            self.esc_timeout += 1
-
-        # if an object is detected, transition to visual servoing
-        # if self.obj_states is not None and self.esc_timeout >= self.max_esc_timeout:
-
-            # find the closest object (this feels so inefficient) TODO: make this faster
-            # for obj in self.obj_states.keys():
-            #     if self.obj_states[obj] != "ON_GROUND": continue
-            #
-            #     obj_pos, orn = self.pb.getBasePositionAndOrientation(bodyUniqueId=obj)
-            #     obj_vector = np.array([obj_pos[0] - pose[0], obj_pos[1] - pose[1]])
-            #
-            #     if np.linalg.norm(obj_vector) <= 0.5:
-            #         self.control.velocity_control(self.robot, 0, 0)
-            #         self.target_obj = obj
-            #         self.obj_states[obj] = "ASSIGNED"
-            #         self.servo_timeout = 0
-            #         self.current_state = "VISUALSERVO"
-            #         return "VISUALSERVO"
-
         if self.destination is not None:
             dist = np.linalg.norm((self.destination[0] - pose[0], self.destination[1] - pose[1]))
 
@@ -225,6 +204,11 @@ class RobotStateMachine:
                 self.control.velocity_control(self.robot, 0, 0)
                 self.set_destination(None)
 
+                if self.target_obj is not None:
+                    self.servo_timeout = 0
+                    self.current_state = "VISUALSERVO"
+                    return "VISUALSERVO"
+
         self.current_state = "NONE"
         return "NONE"
 
@@ -244,7 +228,7 @@ class RobotStateMachine:
             self.current_state = "MOVE"
             return "MOVE"
 
-        dist, orn, vl, vr = self.control.visual_servoing(self.robot, obj_pos, pose)
+        dist, orn, _, _ = self.control.visual_servoing(self.robot, obj_pos, pose)
 
         if dist <= 0.05 and orn < 10 * np.pi / 180:
             self.control.velocity_control(self.robot, 0, 0)
@@ -268,6 +252,8 @@ class RobotStateMachine:
             self.control.velocity_control(self.robot, 0, 0)
             self.empty_basket()
             self.set_destination(None)
+
+            # TODO: Verify that this should just read 'self.current_state = "NONE"' followed by 'return "NONE"'
             self.current_state = "MOVE"
             return "MOVE"
 
@@ -277,6 +263,12 @@ class RobotStateMachine:
     def set_destination(self, destination):
         self.destination = destination
         self.dest_timeout = 0
+
+    def set_target(self, obj):
+        self.target_obj = obj
+        self.obj_states[obj] = "ASSIGNED"
+        self.servo_timeout = 0
+        self.set_destination(self.control.get_object_state(obj))
 
     def empty_basket(self):
         while self.basket:
