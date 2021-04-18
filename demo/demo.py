@@ -7,29 +7,23 @@
 get_ipython().run_line_magic('matplotlib', 'inline')
 get_ipython().run_line_magic('config', "InlineBackend.figure_format = 'retina'")
 
-import pdb, pickle, sys, itertools
+import pickle, itertools
 from loguru import logger
-from copy import deepcopy
 import numpy as np
 from numpy.random import choice as random_choice
 from numpy.linalg import norm as euclidean_norm
-from scipy.special import softmax
 from scipy import integrate
-from rtree import index
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
-from IPython.display import HTML, clear_output
+from IPython.display import clear_output
 
 import pybullet as pb
 import pybullet_utils.bullet_client as bc
 import pybullet_data as pbd
 
-from utils.pb_sim_world_multicluster import PBSimWorld
-from utils.robot_planner import RobotPlanner
-from utils.robot_fsm import ManipulatorStateMachine, RobotStateMachine
-from utils.robot_control import RobotControl
-from utils.sensor_models import SensorModels
+from utils import RobotPlanner
+from utils import RobotStateMachine
 
 base_directory = './urdf_models/'
 output_directory = './outputs/'
