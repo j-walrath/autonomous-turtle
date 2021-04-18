@@ -20,8 +20,8 @@ def test1(pb, objects, object_states, robots, robot_fsms):
 
     robot_fsm: fsm.RobotStateMachine = robot_fsms[robot]
 
+    robot_fsm.set_target(obj)
     obj_pos = controller.get_object_state(obj)
-    robot_fsm.set_destination(obj_pos)
     logging.debug('Object Position: (%d, %d)', obj_pos[0], obj_pos[1])
 
     logging.debug("Executing Simulation...")
