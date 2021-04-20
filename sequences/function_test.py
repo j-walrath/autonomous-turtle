@@ -37,11 +37,7 @@ def function_test(pb, objects, object_states, robots, robot_fsms):
         logging.debug("Moving to Cell {}...".format(cells[i]))
 
         while True:
-            manipulator_state = controller.get_manipulator_state(robot)
-            robot_state = controller.get_robot_state(robot)
-
-            robot_fsm.run_once((manipulator_state, robot_state))
-
+            lib.cycle_robot(robot_fsm)
             lib.step(pb, int(240 / CONTROL_FREQUENCY))
 
             if robot_fsm.current_state == "NONE":
@@ -56,10 +52,7 @@ def function_test(pb, objects, object_states, robots, robot_fsms):
                 robot_fsm.set_destination((0, 0))
                 logging.debug("Returning to Origin...")
                 while True:
-                    manipulator_state = controller.get_manipulator_state(robot)
-                    robot_state = controller.get_robot_state(robot)
-
-                    robot_fsm.run_once((manipulator_state, robot_state))
+                    lib.cycle_robot(robot_fsm)
 
                     lib.step(pb, int(240 / CONTROL_FREQUENCY))
 
@@ -75,24 +68,15 @@ def function_test(pb, objects, object_states, robots, robot_fsms):
         logging.debug("Retrieving object at {}...".format(controller.get_object_state(target)))
 
         while True:
-            manipulator_state = controller.get_manipulator_state(robot)
-            robot_state = controller.get_robot_state(robot)
-
-            robot_fsm.run_once((manipulator_state, robot_state))
-
+            lib.cycle_robot(robot_fsm)
             lib.step(pb, int(240 / CONTROL_FREQUENCY))
 
             if robot_fsm.current_state == "NONE":
-
                 # Only needed if utils.control.MAX_VOLUME is not 1
                 # robot_fsm.set_destination((0, 0))
                 # logging.debug("Returning to Origin...")
                 # while True:
-                #     manipulator_state = controller.get_manipulator_state(robot)
-                #     robot_state = controller.get_robot_state(robot)
-                #
-                #     robot_fsm.run_once((manipulator_state, robot_state))
-                #
+                #     lib.cycle_robot(robot_fsm)
                 #     lib.step(pb, int(240 / CONTROL_FREQUENCY))
                 #
                 #     if robot_fsm.current_state == "NONE":
