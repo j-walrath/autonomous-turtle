@@ -22,6 +22,7 @@ import pybullet_data
 import utils.simulator_library as lib
 from utils.fsm import RobotStateMachine
 from sequences.ucb1 import ucb1
+from sequences.function_test import function_test
 
 logging.basicConfig(level=logging.NOTSET)
 
@@ -89,7 +90,7 @@ def init_states(physClient):
         object_states[obj] = 'ON_GROUND'
 
     for robot in robots:
-        robot_fsms[robot] = RobotStateMachine(physClient, object_states, robot, max_linear_v=5)
+        robot_fsms[robot] = RobotStateMachine(physClient, object_states, robot, max_linear_v=5.0)
 
 
 # RUN SIM
