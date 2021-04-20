@@ -22,6 +22,7 @@ import pybullet as p
 import pybullet_utils.bullet_client as pbc
 import pybullet_data
 
+import utils.simulator_library as lib
 from utils.fsm import RobotStateMachine
 from sequences.test1 import test1
 from sequences.corner_measurements import measure_corners
@@ -130,15 +131,9 @@ if __name__ == "__main__":
               (-3.8, 3.8), (-3.8, 3.6), (-3.8, 3.4), (-3.6, 3.8), (-3.4, 3.8),
               (3.8, 3.8), (3.8, 3.6), (3.8, 3.4), (3.6, 3.8), (3.4, 3.8),
               (3.8, -3.8), (3.8, -3.6), (3.8, -3.4), (3.6, -3.8), (3.4, -3.8)]
-    for c in coords:
-        objects.append(pb.loadURDF(objModel, basePosition=[c[0], c[1], 0.3], globalScaling=1.0))
 
-        if not COLLISION:
-            # Do not collide with robots or other objects
-            pb.setCollisionFilterGroupMask(objects[-1], -1, 0, 0)
-
-            # Do collide with the ground plane
-            pb.setCollisionFilterPair(objects[-1], 0, -1, -1, 1)
+    for obj in lib.load_objects(pb, coords):
+        objects.append(obj)
 
     step(pb, 100)
 
