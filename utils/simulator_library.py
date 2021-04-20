@@ -5,6 +5,7 @@ ROBOT_MODEL = "./urdf_models/tb_openmanipulator/trash_collect_robot_four_wheel.u
 PLANE_MODEL = "./urdf_models/plane_with_dumpsters.urdf"
 
 SIM_FREQUENCY = 240
+CONTROL_FREQUENCY = 40
 
 
 def load_plane(pb, position=None, lateralFriction=3.0, spinningFriction=0.03, rollingFriction=0.03, restitution=0.5,
@@ -48,3 +49,7 @@ def step(pb, t):
     for _ in range(t):
         pb.stepSimulation()
         time.sleep(1. / SIM_FREQUENCY)
+
+
+def get_cell_coordinates(x, y):
+    return x + 0.5, y + 0.5
