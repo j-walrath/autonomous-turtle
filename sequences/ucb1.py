@@ -1,18 +1,12 @@
-import time
+import math
 import logging
 from utils.control import RobotControl
 from utils import fsm
+from utils import simulator_library as lib
 import numpy as np
 
-CONTROL_FREQUENCY = 40
 N = 10
 M = 5
-
-
-def wait(pb, t):
-    for _ in range(t):
-        pb.stepSimulation()
-        time.sleep(1. / 240.)
 
 
 # SINGLE AGENT UCB TEST
@@ -30,88 +24,63 @@ def ucb1(pb, objects, object_states, robots, robot_fsms):
 
     object_locations = np.random.multivariate_normal(mu, sig, N)
 
+    for obj in lib.load_objects(pb, object_locations):
+        objects.append(obj)
+        object_states[obj] = "ON_GROUND"
 
     controller = RobotControl(pb)
 
     robot = robots[0]
-    logging.debug('Robot ID: %s', robot)
-
     robot_fsm: fsm.RobotStateMachine = robot_fsms[robot]
 
     logging.debug("Executing Simulation...")
 
-    cells = [(4, 4), (4, -4), (-4, -4), (-4, 4)]
-    targets = [(3.5, 3.5), (3.5, -3.5), (-3.5, -3.5), (-3.5, 3.5)]
+    # INITIALIZE AGENT
+    for i in range(M):
+        for j in range (M):
+            visits[i][j] += 1
+            robot_fsm.set_destination(lib.get_cell_coordinates(i, j))
 
-    # MEASURE CELLS
-    for i in range(len(cells)):
-        robot_fsm.set_destination(targets[i])
-        logging.debug("Moving to Cell {}...".format(cells[i]))
+            while True:
+                manipulator_state = controller.get_manipulator_state(robot)
+                robot_state = controller.get_robot_state(robot)
+                robot_fsm.run_once((manipulator_state, robot_state))
+                lib.step(pb, int(lib.SIM_FREQUENCY/lib.CONTROL_FREQUENCY))
 
+                if robot_fsm.current_state == "NONE":
+                    lib.step(pb, 100)
+                    reward[i][j] = controller.measure(robot, objects, noise="GAUSSIAN", sigma=var)
+                    break
+
+    # RUN UCB1
+    for i in range(1, T+1):
+        exp_mean = np.divide(reward, visits)
+        Q = exp_mean + np.divide(math.sqrt(2 * math.log(i)), np.sqrt(visits))
+        target = np.unravel_index(np.argmax(Q), Q.shape)
+
+        robot_fsm.set_destination(lib.get_cell_coordinates(target[0], target[1]))
         while True:
             manipulator_state = controller.get_manipulator_state(robot)
             robot_state = controller.get_robot_state(robot)
-
             robot_fsm.run_once((manipulator_state, robot_state))
-
-            wait(pb, int(240 / CONTROL_FREQUENCY))
+            lib.step(pb, int(lib.SIM_FREQUENCY / lib.CONTROL_FREQUENCY))
 
             if robot_fsm.current_state == "NONE":
-                wait(pb, 100)
-
-                m = controller.measure(robot, robot_fsm.obj_states, noise="GAUSSIAN")
-                actual = controller.measure(robot, robot_fsm.obj_states,)
-                logging.debug("Robot measured {} objects (Actual = {}).".format(m, actual))
-
-                wait(pb, 100)
-
-                robot_fsm.set_destination((0, 0))
-                logging.debug("Returning to Origin...")
-                while True:
-                    manipulator_state = controller.get_manipulator_state(robot)
-                    robot_state = controller.get_robot_state(robot)
-
-                    robot_fsm.run_once((manipulator_state, robot_state))
-
-                    wait(pb, int(240 / CONTROL_FREQUENCY))
-
-                    if robot_fsm.current_state == "NONE":
-                        break
+                lib.step(pb, 100)
+                measurement = controller.measure(robot, objects, noise="GAUSSIAN", sigma=var)
+                reward[target] += measurement * (1 - delta**visits[target])
+                visits[target] += 1
                 break
+        logging.info("Time step: {:<2} | Target: {}".format(i, target))
+        logging.info(visits)
 
-    # RETRIEVE ONE OBJECT FROM EACH MEASURED CELL
-    targets = [4, 9, 14, 19]
-    for target in targets:
-        robot_fsm.set_target(target)
+    lib.step(pb, 100)
 
-        logging.debug("Retrieving object at {}...".format(controller.get_object_state(target)))
-
-        while True:
-            manipulator_state = controller.get_manipulator_state(robot)
-            robot_state = controller.get_robot_state(robot)
-
-            robot_fsm.run_once((manipulator_state, robot_state))
-
-            wait(pb, int(240 / CONTROL_FREQUENCY))
-
-            if robot_fsm.current_state == "NONE":
-
-                # Only needed if utils.control.MAX_VOLUME is not 1
-                # robot_fsm.set_destination((0, 0))
-                # logging.debug("Returning to Origin...")
-                # while True:
-                #     manipulator_state = controller.get_manipulator_state(robot)
-                #     robot_state = controller.get_robot_state(robot)
-                #
-                #     robot_fsm.run_once((manipulator_state, robot_state))
-                #
-                #     wait(pb, int(240 / CONTROL_FREQUENCY))
-                #
-                #     if robot_fsm.current_state == "NONE":
-                #         break
-                break
-
-    wait(pb, 100)
+    # FINAL OUTPUT
+    logging.info("Simulation Complete!")
+    visits -= 1
+    logging.info(visits)
+    logging.info(field - visits)
 
     logging.debug("Returning to Main...")
 
