@@ -256,4 +256,4 @@ class RobotControl:
             if x <= u <= x+r and y <= v <= y+r and objects[obj] not in ("RECOVERED", "RETRIEVED"):
                 count += 1
 
-        return int(np.random.default_rng().normal(count, sigma)) if noise == "GAUSSIAN" else count
+        return round(np.random.default_rng().normal(count, sigma), 1) if noise == "GAUSSIAN" else count
