@@ -4,7 +4,7 @@ import pybullet as p
 from utils.control import RobotControl
 
 DEG_TO_RAD = np.pi/180
-MAX_VOLUME = 1
+MAX_VOLUME = 10
 DISTANCE_THRESHOLD = 0.3
 OBJECT_STATUS = ["ON_GROUND", "ASSIGNED", "RECOVERED", "RETRIEVED"]
 
