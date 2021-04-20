@@ -5,8 +5,12 @@ from utils import fsm
 from utils import simulator_library as lib
 import numpy as np
 
-N = 10
+N = 100
 M = 5
+
+
+def in_cell(target, state):
+    return target[0] <= state[0] <= target[0]+1 and target[1] <= state[1] <= target[1]+1
 
 
 # SINGLE AGENT UCB TEST
@@ -14,13 +18,13 @@ def ucb1(pb, objects, object_states, robots, robot_fsms):
     logging.info('Running Single Robot UCB1...')
 
     mu = [3, 2]
-    sig = [[0.1, 0], [0, 0.1]]
+    sig = [[0.4, 0], [0, 0.4]]
     var = 0.1
     field = np.zeros((M, M))
     visits = np.zeros((M, M))
     reward = np.zeros((M, M))
-    T = 10
-    delta = 0.2
+    T = N
+    delta = 1
 
     object_locations = np.random.multivariate_normal(mu, sig, N)
 
@@ -64,16 +68,22 @@ def ucb1(pb, objects, object_states, robots, robot_fsms):
             if robot_fsm.current_state == "NONE":
                 lib.step(pb, 100)
                 measurement = controller.measure(robot, robot_fsm.obj_states, noise="GAUSSIAN", sigma=var)
-                reward[target] += measurement * (1 - delta**visits[target])
-                visits[target] += 1
+                reward[target] += measurement
 
-                robot_fsm.set_destination((0, 0))
+                # PICKUP OBJECT
+                for obj in objects:
+                    if object_states[obj] == "ON_GROUND" and in_cell(target, controller.get_object_state(obj)):
+                        robot_fsm.set_target(obj)
+                        break
+
                 while True:
                     lib.cycle_robot(robot_fsm)
                     lib.step(pb, int(lib.SIM_FREQUENCY / lib.CONTROL_FREQUENCY))
 
                     if robot_fsm.current_state == "NONE":
                         break
+
+                visits[target] += 1
                 break
         logging.info("Time step: {:<2} | Target: {}".format(i, target))
         logging.info(visits)
