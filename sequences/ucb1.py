@@ -37,7 +37,7 @@ def ucb1(pb, objects, object_states, robots, robot_fsms):
 
     # INITIALIZE AGENT
     for i in range(M):
-        for j in range (M):
+        for j in (range(M - 1, -1, -1) if i & 1 else range(M)):
             visits[i][j] += 1
             robot_fsm.set_destination(lib.get_cell_coordinates(i, j))
 
@@ -49,7 +49,7 @@ def ucb1(pb, objects, object_states, robots, robot_fsms):
 
                 if robot_fsm.current_state == "NONE":
                     lib.step(pb, 100)
-                    reward[i][j] = controller.measure(robot, objects, noise="GAUSSIAN", sigma=var)
+                    reward[i][j] = controller.measure(robot, robot_fsm.obj_states, noise="GAUSSIAN", sigma=var)
                     break
 
     # RUN UCB1
@@ -67,9 +67,19 @@ def ucb1(pb, objects, object_states, robots, robot_fsms):
 
             if robot_fsm.current_state == "NONE":
                 lib.step(pb, 100)
-                measurement = controller.measure(robot, objects, noise="GAUSSIAN", sigma=var)
+                measurement = controller.measure(robot, robot_fsm.obj_states, noise="GAUSSIAN", sigma=var)
                 reward[target] += measurement * (1 - delta**visits[target])
                 visits[target] += 1
+
+                robot_fsm.set_destination((0, 0))
+                while True:
+                    manipulator_state = controller.get_manipulator_state(robot)
+                    robot_state = controller.get_robot_state(robot)
+                    robot_fsm.run_once((manipulator_state, robot_state))
+                    lib.step(pb, int(lib.SIM_FREQUENCY / lib.CONTROL_FREQUENCY))
+
+                    if robot_fsm.current_state == "NONE":
+                        break
                 break
         logging.info("Time step: {:<2} | Target: {}".format(i, target))
         logging.info(visits)
