@@ -52,7 +52,7 @@ def generate_robot_coordinates(bounds, n):  # LOAD ROBOT(S)
     # TODO: Fix loading in multiple robots
     coords = []
     if n == 1:
-        coords.append([[0, 0]])
+        coords.append([0, 0])
     elif n > 1:
         for i in range(n):
             coords.append([bounds[0] + i, bounds[0]])
