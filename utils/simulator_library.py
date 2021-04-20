@@ -1,4 +1,5 @@
 import time
+from utils.fsm import RobotStateMachine
 
 OBJ_MODEL = "./urdf_models/objects/object.urdf"
 ROBOT_MODEL = "./urdf_models/tb_openmanipulator/trash_collect_robot_four_wheel.urdf"
@@ -43,6 +44,12 @@ def load_robots(pb, locations):
         pb.changeDynamics(robots[-1], -1, maxJointVelocity=300, lateralFriction=1.0, rollingFriction=0.03,
                           restitution=0.7)
     return robots
+
+
+def cycle_robot(fsm: RobotStateMachine):
+    manipulator_state = fsm.control.get_manipulator_state(fsm.robot)
+    robot_state = fsm.control.get_robot_state(fsm.robot)
+    fsm.run_once((manipulator_state, robot_state))
 
 
 def step(pb, t):
