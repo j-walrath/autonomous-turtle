@@ -13,34 +13,25 @@ get a better sense of which values are variable.
 """
 
 # IMPORTS
-import time
 import logging
-
 import numpy as np
-
 import pybullet as p
 import pybullet_utils.bullet_client as pbc
 import pybullet_data
 
 import utils.simulator_library as lib
 from utils.fsm import RobotStateMachine
-from sequences.test1 import test1
-from sequences.corner_measurements import measure_corners
-from sequences.visit_cells import visit_cells
-from sequences.function_test import function_test
+from sequences.ucb1 import ucb1
 
 logging.basicConfig(level=logging.NOTSET)
 
 # DIRECTORIES & LOCATIONS
 baseDir = './urdf_models/'
 outDir = './outputs/'
-planeModel = "./urdf_models/plane_with_dumpsters.urdf"
-objModel = "./urdf_models/objects/object.urdf"
-robotModel = "./urdf_models/tb_openmanipulator/trash_collect_robot_four_wheel.urdf"
 
 # CONSTANTS & GLOBAL VARIABLES
 DEFAULT_BOUNDS = (-5, 5)   # area bounds for sim world
-COLLISION = False
+SIM_SEQUENCE = ucb1
 
 objects = []               # list of body unique object IDs
 object_states = {}         # key: object ID, val: string state of object
@@ -49,100 +40,73 @@ robots = []                # list of body unique robot IDs
 robot_fsms = {}            # key: robot ID, val: robot FSM instance
 
 
-def init_sim(numObjects=10, numRobots=2):  # PYBULLET INIT
-    pb = pbc.BulletClient(connection_mode=p.GUI)
-    pb.setAdditionalSearchPath(pybullet_data.getDataPath())
-    pb.setGravity(0, 0, -9.807)
-    pb.resetDebugVisualizerCamera(6, 0, -89, [0, 0, 0])  # overhead camera perspective
+def generate_obj_coordinates(bounds, n):  # LOAD OBJECTS
+    lower = bounds[0] + 0.5
+    upper = bounds[1] - 0.5
+    rng = np.random.default_rng()
+    coords = (upper - lower) * rng.random(size=(n, 2)) + lower
+    return coords
+
+
+def generate_robot_coordinates(bounds, n):  # LOAD ROBOT(S)
+    # TODO: Fix loading in multiple robots
+    coords = []
+    if n == 1:
+        coords.append([[0, 0]])
+    elif n > 1:
+        for i in range(n):
+            coords.append([bounds[0] + i, bounds[0]])
+    else:
+        return None
+
+    return coords
+
+
+def init_sim(numObjects=0, numRobots=0):  # PYBULLET INIT
+    physClient = pbc.BulletClient(connection_mode=p.GUI)
+    physClient.setAdditionalSearchPath(pybullet_data.getDataPath())
+    physClient.setGravity(0, 0, -9.807)
+    physClient.resetDebugVisualizerCamera(5, 0, -89, [2.5, 2.5, 0])  # overhead camera perspective
 
     # LOAD PLANE
-    pb.loadURDF(planeModel, basePosition=[0, 0, 0], globalScaling=1.0)
-    pb.changeDynamics(0, -1, lateralFriction=3.0, spinningFriction=0.03, rollingFriction=0.03, restitution=0.5)
+    lib.load_plane(physClient)
 
     # LOAD OBJECTS
-    load_objects(pb, DEFAULT_BOUNDS[0], DEFAULT_BOUNDS[1], numObjects)
+    if numObjects:
+        for obj in lib.load_objects(physClient, generate_obj_coordinates(DEFAULT_BOUNDS, numObjects)):
+            objects.append(obj)
 
     # LOAD ROBOTS
-    load_robots(pb, DEFAULT_BOUNDS[0], DEFAULT_BOUNDS[1], numRobots)
+    if numRobots:
+        for robot in lib.load_robots(physClient, generate_robot_coordinates(DEFAULT_BOUNDS, numRobots)):
+            robots.append(robot)
 
-    return pb
-
-
-def load_objects(pb, lBound, uBound, numObjects):  # LOAD OBJECTS
-    lower = lBound + 0.5
-    upper = uBound - 0.5
-    rng = np.random.default_rng()
-    coords = (upper - lower) * rng.random(size=(numObjects, 2)) + lower
-    for i in range(numObjects):
-        objects.append(pb.loadURDF(objModel, basePosition=[coords[i, 0], coords[i, 1], 0.3], globalScaling=1.0))
-
-        if not COLLISION:
-            # Do not collide with robots or other objects
-            pb.setCollisionFilterGroupMask(objects[-1], -1, 0, 0)
-
-            # Do collide with the ground plane
-            pb.setCollisionFilterPair(objects[-1], 0, -1, -1, 1)
+    return physClient
 
 
-def load_robots(pb, lBound, uBound, numRobots):  # LOAD ROBOT(S)
-    # TODO: Fix loading in multiple robots
-    orn = p.getQuaternionFromEuler([0, 0, 0])
-
-    if numRobots == 1:
-        robots.append(p.loadURDF(robotModel, [0, 0, 0.5], orn))
-    else:
-        lower = lBound + 0.5
-        upper = uBound - 0.5
-        rng = np.random.default_rng()
-        coords = (upper - lower) * rng.random(size=(numRobots, 2)) + lower
-
-        for i in range(numRobots):
-            robots.append(pb.loadURDF(robotModel, [coords[i, 0], coords[i, 1], 0.5], orn))
-            pb.changeDynamics(robots[-1], -1, maxJointVelocity=300, lateralFriction=1.0, rollingFriction=0.03, restitution=0.7)
-
-
-def init_states(pb):
+def init_states(physClient):
     for obj in objects:
         object_states[obj] = 'ON_GROUND'
 
     for robot in robots:
-        robot_fsms[robot] = RobotStateMachine(pb, object_states, robot, max_linear_v=5)
-
-
-def step(pb, t):
-    for _ in range(t):
-        pb.stepSimulation()
-        time.sleep(1. / 240.)
+        robot_fsms[robot] = RobotStateMachine(physClient, object_states, robot, max_linear_v=5)
 
 
 # RUN SIM
-# TODO: Robots follow UCB algorithm
 # TODO: Add live stats to the GUI
 # TODO: Record frames/stats and save to output
 if __name__ == "__main__":
-    numObjects = 0
-    numRobots = 1
-    sequence = function_test
-
     logging.info('Initializing GUI Simulator...')
-    pb = init_sim(numObjects, numRobots)
+    pb = init_sim(numObjects=0, numRobots=1)
 
-    coords = [(-3.8, -3.8), (-3.8, -3.6), (-3.8, -3.4), (-3.6, -3.8), (-3.4, -3.8),
-              (-3.8, 3.8), (-3.8, 3.6), (-3.8, 3.4), (-3.6, 3.8), (-3.4, 3.8),
-              (3.8, 3.8), (3.8, 3.6), (3.8, 3.4), (3.6, 3.8), (3.4, 3.8),
-              (3.8, -3.8), (3.8, -3.6), (3.8, -3.4), (3.6, -3.8), (3.4, -3.8)]
-
-    for obj in lib.load_objects(pb, coords):
-        objects.append(obj)
-
-    step(pb, 100)
+    lib.step(pb, 100)
 
     logging.info('Initializing Object & Robot States...')
     init_states(pb)
-    step(pb, 100)
+    lib.step(pb, 100)
 
     logging.info('Running Simulation...')
-    sequence(pb, objects, object_states, robots, robot_fsms)
+    SIM_SEQUENCE(pb, objects, object_states, robots, robot_fsms)
 
     logging.info('Simulation Runtime Complete.')
 
