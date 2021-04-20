@@ -3,6 +3,7 @@ import logging
 from math import floor
 from utils.control import RobotControl
 from utils import fsm
+import utils.simulator_library as lib
 
 CONTROL_FREQUENCY = 40
 RADIUS = 1.0
@@ -13,15 +14,23 @@ def measure_corners(pb, objects, object_states, robots, robot_fsms):
 
     controller = RobotControl(pb)
 
+    cells = [(4, 4), (4, -4), (-4, -4), (-4, 4)]
+    targets = [(3.5, 3.5), (3.5, -3.5), (-3.5, -3.5), (-3.5, 3.5)]
+    coords = [(-3.8, -3.8), (-3.8, -3.6), (-3.8, -3.4), (-3.6, -3.8), (-3.4, -3.8),
+              (-3.8, 3.8), (-3.8, 3.6), (-3.8, 3.4), (-3.6, 3.8), (-3.4, 3.8),
+              (3.8, 3.8), (3.8, 3.6), (3.8, 3.4), (3.6, 3.8), (3.4, 3.8),
+              (3.8, -3.8), (3.8, -3.6), (3.8, -3.4), (3.6, -3.8), (3.4, -3.8)]
+
+    for obj in lib.load_objects(pb, coords):
+        objects.append(obj)
+        object_states[obj] = "ON_GROUND"
+
     robot = robots[0]
     logging.debug('Robot ID: %s', robot)
 
     robot_fsm: fsm.RobotStateMachine = robot_fsms[robot]
 
     logging.debug("Executing Simulation...")
-
-    cells = [(4, 4), (4, -4), (-4, -4), (-4, 4)]
-    targets = [(3.5, 3.5), (3.5, -3.5), (-3.5, -3.5), (-3.5, 3.5)]
 
     for i in range(len(cells)):
         robot_fsm.set_destination(targets[i])
