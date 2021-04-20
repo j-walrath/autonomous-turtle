@@ -32,7 +32,7 @@ def curvature(r, theta, delta):
     k1 = 1
 
     # timescale factor between fast subsystem and slow manifold
-    k2 = 10
+    k2 = 8
 
     return -(1/r)*(k2*(delta-np.arctan(-k1*theta)) + (1 + k1/(1+(k1*theta)**2))*np.sin(delta))
 
