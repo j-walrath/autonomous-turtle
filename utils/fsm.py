@@ -123,10 +123,8 @@ class RobotStateMachine:
     max_servo_timeout = 500
     collection_sites = [((0, 0), 5)]
     threshold_distance = 0.5
-    gain_mag = 5.0
-    gain_deg = 5.0
 
-    def __init__(self, pb, obj_states, robot_id, max_linear_v=0.2, max_rotational_v=5.0):
+    def __init__(self, pb, obj_states, robot_id, max_linear_v=1.0):
         self.pb = pb
         self.handlers = {"PICKUP": self.pickup,
                          "MOVE": self.move,
@@ -148,10 +146,7 @@ class RobotStateMachine:
 
         self.arm_fsm = ManipulatorStateMachine(pb, robot_id)
 
-        self.max_linear_v = max_linear_v
-        self.max_rotational_v = max_rotational_v
-
-        self.control = RobotControl(pb, max_linear_velocity=max_linear_v, max_rotational_velocity=max_rotational_v)
+        self.control = RobotControl(pb, max_linear_velocity=max_linear_v)
 
     def pickup(self, state):
         manipulator_state = state[0]
@@ -293,9 +288,9 @@ class RobotStateMachine:
         self.arm_fsm.current_volume = 0
 
     def run_once(self, state):
-        new_state = self.handler(state)
-        if new_state is not "NONE":
-            self.handler = self.handlers[new_state]
+        new_fsm_state = self.handler(state)
+        if new_fsm_state is not "NONE":
+            self.handler = self.handlers[new_fsm_state]
 
     def breakdown(self):
         self.control.velocity_control(self.robot, 0, 0)
