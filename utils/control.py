@@ -252,8 +252,9 @@ class RobotControl:
         x, y = map(floor, pose[0:2])
         count = 0
         for obj in objects:
-            u, v = self.get_object_state(obj)
-            if x <= u <= x+r and y <= v <= y+r and objects[obj] not in ("RECOVERED", "RETRIEVED"):
-                count += 1
+            if objects[obj] not in ("RECOVERED", "RETRIEVED"):
+                u, v = self.get_object_state(obj)
+                if x <= u <= x+r and y <= v <= y+r:
+                    count += 1
 
         return round(np.random.default_rng().normal(count, sigma), 1) if noise == "GAUSSIAN" else count
