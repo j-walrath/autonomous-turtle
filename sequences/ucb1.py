@@ -42,9 +42,7 @@ def ucb1(pb, objects, object_states, robots, robot_fsms):
             robot_fsm.set_destination(lib.get_cell_coordinates(i, j))
 
             while True:
-                manipulator_state = controller.get_manipulator_state(robot)
-                robot_state = controller.get_robot_state(robot)
-                robot_fsm.run_once((manipulator_state, robot_state))
+                lib.cycle_robot(robot_fsm)
                 lib.step(pb, int(lib.SIM_FREQUENCY/lib.CONTROL_FREQUENCY))
 
                 if robot_fsm.current_state == "NONE":
@@ -60,9 +58,7 @@ def ucb1(pb, objects, object_states, robots, robot_fsms):
 
         robot_fsm.set_destination(lib.get_cell_coordinates(target[0], target[1]))
         while True:
-            manipulator_state = controller.get_manipulator_state(robot)
-            robot_state = controller.get_robot_state(robot)
-            robot_fsm.run_once((manipulator_state, robot_state))
+            lib.cycle_robot(robot_fsm)
             lib.step(pb, int(lib.SIM_FREQUENCY / lib.CONTROL_FREQUENCY))
 
             if robot_fsm.current_state == "NONE":
@@ -73,9 +69,7 @@ def ucb1(pb, objects, object_states, robots, robot_fsms):
 
                 robot_fsm.set_destination((0, 0))
                 while True:
-                    manipulator_state = controller.get_manipulator_state(robot)
-                    robot_state = controller.get_robot_state(robot)
-                    robot_fsm.run_once((manipulator_state, robot_state))
+                    lib.cycle_robot(robot_fsm)
                     lib.step(pb, int(lib.SIM_FREQUENCY / lib.CONTROL_FREQUENCY))
 
                     if robot_fsm.current_state == "NONE":
