@@ -1,7 +1,7 @@
 import numpy as np
 import pybullet as p
 
-from utils.control import RobotControl
+from utils.control import RobotControl, MAX_LINEAR_V
 
 DEG_TO_RAD = np.pi/180
 MAX_VOLUME = 10
@@ -124,7 +124,7 @@ class RobotStateMachine:
     collection_sites = [((0, 0), 5)]
     threshold_distance = 0.5
 
-    def __init__(self, pb, obj_states, robot_id, max_linear_v=1.0):
+    def __init__(self, pb, obj_states, robot_id, max_linear_v=MAX_LINEAR_V):
         self.pb = pb
         self.handlers = {"PICKUP": self.pickup,
                          "MOVE": self.move,
