@@ -3,10 +3,12 @@ from numpy.linalg import norm
 from scipy.linalg import logm
 from math import floor
 import logging
+from utils import simulator_library as lib
 
 import pybullet as pb
 
 DEG_TO_RAD = np.pi / 180
+MAX_LINEAR_V = 3.5
 
 
 def euler_to_rot_mat(yaw):
@@ -32,7 +34,7 @@ def curvature(r, theta, delta):
     k1 = 1
 
     # timescale factor between fast subsystem and slow manifold
-    k2 = 5
+    k2 = 4
 
     return -(1/r)*(k2*(delta-np.arctan(-k1*theta)) + (1 + k1/(1+(k1*theta)**2))*np.sin(delta))
 
@@ -49,7 +51,8 @@ def compute_v(k, vmax):
 
 def get_rays(pose, length, height):
     (x, y, yaw) = pose
-    sideLength = length/2
+    sideLength = length * 0.6
+    factor = 1.5
     rayFrom = []
     rayTo = []
 
@@ -60,9 +63,12 @@ def get_rays(pose, length, height):
         dx = i / length * (rayFrom[0][1] - rayTo[0][1])
         dy = i / length * (rayFrom[0][0] - rayTo[0][0])
         rayFrom.append([rayFrom[0][0] + dx, rayFrom[0][1] + dy, height])
-        rayTo.append([rayTo[0][0] + dx, rayTo[0][1] + dy, height])
+        # rayTo.append([rayTo[0][0] + dx, rayTo[0][1] + dy, height])
+        rayTo.append(
+            [rayFrom[-1][0] + length * np.cos(yaw - (factor * i)), rayFrom[-1][1] + length * np.sin(yaw - (factor * i)),
+             height])
 
-    for i in np.linspace(-np.pi / 2, 0, 8, endpoint=False):
+    for i in np.linspace(3*np.pi/4, 0, 15, endpoint=False):
         rayFrom.append(rayFrom[6])
         rayTo.append(
             [rayFrom[6][0] + sideLength * np.cos(yaw + i), rayFrom[6][1] + sideLength * np.sin(yaw + i), height])
@@ -71,9 +77,12 @@ def get_rays(pose, length, height):
         dx = i / length * (rayFrom[0][1] - rayTo[0][1])
         dy = i / length * (rayFrom[0][0] - rayTo[0][0])
         rayFrom.append([rayFrom[0][0] + dx, rayFrom[0][1] + dy, height])
-        rayTo.append([rayTo[0][0] + dx, rayTo[0][1] + dy, height])
+        # rayTo.append([rayTo[0][0] + dx, rayTo[0][1] + dy, height])
+        rayTo.append(
+            [rayFrom[-1][0] + length * np.cos(yaw - (factor * i)), rayFrom[-1][1] + length * np.sin(yaw - (factor * i)),
+             height])
 
-    for i in np.linspace(np.pi / 2, 0, 8, endpoint=False):
+    for i in np.linspace(3*np.pi/4, 0, 15, endpoint=False):
         rayFrom.append(rayFrom[-1])
         rayTo.append(
             [rayFrom[-1][0] + sideLength * np.cos(yaw + i), rayFrom[-1][1] + sideLength * np.sin(yaw + i), height])
@@ -85,10 +94,10 @@ class RobotControl:
     minimum_linear_velocity = 0
     critical_distance = .5
     activation_threshold = 15 * DEG_TO_RAD
-    object_distance_offset = 0.16428811071136287
+    # object_distance_offset = 0.16428811071136287
     object_distance_offset = 0.3
 
-    def __init__(self, pb_client, max_linear_velocity=1, max_rotational_velocity=5.0):
+    def __init__(self, pb_client, max_linear_velocity=MAX_LINEAR_V, max_rotational_velocity=5.0):
         self.pb_client = pb_client
         self.max_linear_velocity = max_linear_velocity
         self.max_rotational_velocity = max_rotational_velocity
@@ -213,12 +222,12 @@ class RobotControl:
         w = k * v
 
         if avoidance:
-            ray_from, ray_to = get_rays(pose, length=0.7, height=0.064)
+            ray_from, ray_to = get_rays(pose, length=0.7, height=0.055)
             ray_results = pb.rayTestBatch(ray_from, ray_to)
 
             obstacles = set()
             for (avoidance_id, _, _, _, _) in ray_results:
-                if avoidance_id not in (-1, 0, robot_id):
+                if (avoidance_id not in (-1, 0, robot_id)) and (pb.getNumJoints(avoidance_id) > 0):
                     obstacles.add(avoidance_id)
 
             if obstacles:
@@ -234,7 +243,7 @@ class RobotControl:
                     elif phi <= -np.pi:
                         phi += 2 * np.pi
 
-                    w += 1 if phi < 0 else -1
+                    w += 2 if phi < 0 else -2
 
         self.velocity_control(robot_id, linear_velocity=v, rotational_velocity=w)
 
