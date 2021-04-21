@@ -1,5 +1,7 @@
 import time
 import logging
+
+import utils.control
 from utils.control import RobotControl
 from utils.fsm import RobotStateMachine
 import utils.simulator_library as lib
@@ -98,7 +100,7 @@ def function_test_multi(pb, objects, object_states, robots, robot_fsms):
     robot_coords = [(1, 1), (1, -1), (-1, -1), (-1, 1)]
     for robot in lib.load_robots(pb, robot_coords):
         robots.append(robot)
-        robot_fsms[robot] = RobotStateMachine(pb, object_states, robot, max_linear_v=5.0)
+        robot_fsms[robot] = RobotStateMachine(pb, object_states, robot, max_linear_v=utils.control.MAX_LINEAR_V)
 
     logging.debug('Loaded robots...')
 
