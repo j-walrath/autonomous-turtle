@@ -1,3 +1,5 @@
+import logging
+
 import pybullet as p
 import math
 import utils.simulator_library as lib
@@ -7,11 +9,14 @@ import numpy as np
 
 def ray_test(pb, objects, object_states, robots, robot_fsms):
     controller = RobotControl(pb, max_linear_velocity=5)
-    p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
+    # p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
     # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING,0)
+    pb.resetDebugVisualizerCamera(2, 0, -89, [0, 0, 0])
 
-    robots = lib.load_robots(pb, [[3, 3], [-5, -2]])
-    lib.load_objects(pb, [[1, 2], [2.5, 2.5]])
+    robots = lib.load_robots(pb, [[0, 0]])
+    # robots = lib.load_robots(pb, [[3, 3], [-5, -2]])
+    # objects = lib.load_objects(pb, [[1, 2], [2.5, 2.5]])
+    # logging.debug("Objects have {} joints.".format(pb.getNumJoints(objects[0])))
 
     rayFrom = []
     rayTo = []
@@ -37,11 +42,12 @@ def ray_test(pb, objects, object_states, robots, robot_fsms):
     #     else:
     #         rayIds.append(-1)
 
-    length = 0.5
-    sideLength = 0.25
-    height = 0.064
+    length = 0.7
+    sideLength = length * 0.6
+    height = 0.055
+    factor = 1.5
 
-    (x, y, yaw), _ = controller.get_robot_state(robots[1])
+    (x, y, yaw), _ = controller.get_robot_state(robots[-1])
     rayFrom.append([x + 0.15 * np.cos(yaw), y + 0.15 * np.sin(yaw), height])
     rayTo.append([rayFrom[0][0] + length * np.cos(yaw), rayFrom[0][1] + length * np.sin(yaw), height])
     if replaceLines:
@@ -53,7 +59,8 @@ def ray_test(pb, objects, object_states, robots, robot_fsms):
         dx = i/length * (rayFrom[0][1]-rayTo[0][1])
         dy = i/length * (rayFrom[0][0]-rayTo[0][0])
         rayFrom.append([rayFrom[0][0] + dx, rayFrom[0][1] + dy, height])
-        rayTo.append([rayTo[0][0] + dx, rayTo[0][1] + dy, height])
+        # rayTo.append([rayTo[0][0] + dx, rayTo[0][1] + dy, height])
+        rayTo.append([rayFrom[-1][0] + length * np.cos(yaw-(factor*i)), rayFrom[-1][1] + length * np.sin(yaw-(factor*i)), height])
 
         if replaceLines:
             rayIds.append(p.addUserDebugLine(rayFrom[0], rayTo[0], rayMissColor))
@@ -64,14 +71,15 @@ def ray_test(pb, objects, object_states, robots, robot_fsms):
         dx = i / length * (rayFrom[0][1] - rayTo[0][1])
         dy = i / length * (rayFrom[0][0] - rayTo[0][0])
         rayFrom.append([rayFrom[0][0] + dx, rayFrom[0][1] + dy, height])
-        rayTo.append([rayTo[0][0] + dx, rayTo[0][1] + dy, height])
+        # rayTo.append([rayTo[0][0] + dx, rayTo[0][1] + dy, height])
+        rayTo.append([rayFrom[-1][0] + length * np.cos(yaw-(factor*i)), rayFrom[-1][1] + length * np.sin(yaw-(factor*i)), height])
 
         if replaceLines:
             rayIds.append(p.addUserDebugLine(rayFrom[0], rayTo[0], rayMissColor))
         else:
             rayIds.append(-1)
 
-    for i in np.linspace(np.pi/2, 0, 8, endpoint=False):
+    for i in np.linspace(3*np.pi/4, 0, 15, endpoint=False):
         rayFrom.append(rayFrom[-1])
         rayTo.append([rayFrom[-1][0] + sideLength * np.cos(yaw+i), rayFrom[-1][1] + sideLength * np.sin(yaw+i), height])
 
@@ -80,7 +88,7 @@ def ray_test(pb, objects, object_states, robots, robot_fsms):
         else:
             rayIds.append(-1)
 
-    for i in np.linspace(-np.pi/2, 0, 8, endpoint=False):
+    for i in np.linspace(-3*np.pi/4, 0, 15, endpoint=False):
         rayFrom.append(rayFrom[6])
         rayTo.append([rayFrom[6][0] + sideLength * np.cos(yaw+i), rayFrom[6][1] + sideLength * np.sin(yaw+i), height])
 
@@ -93,7 +101,7 @@ def ray_test(pb, objects, object_states, robots, robot_fsms):
     for i in range(numSteps):
         p.stepSimulation()
         for j in range(8):
-            results = p.rayTestBatch(rayFrom, rayTo, j + 1)
+            results = p.rayTestBatch(rayFrom, rayTo, parentObjectUniqueId=robots[-1])
 
         # for i in range (10):
         #	p.removeAllUserDebugItems()
