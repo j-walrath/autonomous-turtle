@@ -192,7 +192,7 @@ class RobotStateMachine:
             self.dest_dist = dist
 
             if self.dest_dist > DISTANCE_THRESHOLD:
-                self.control.pose_control(self.robot, self.destination)
+                self.control.pose_control(self.robot, self.destination, avoidance=True)
                 self.current_state = "MOVE"
                 return "MOVE"
 
@@ -257,7 +257,7 @@ class RobotStateMachine:
         return_dist = np.linalg.norm((return_site[0] - pose[0], return_site[1] - pose[1]))
 
         if return_dist > DISTANCE_THRESHOLD:
-            self.control.pose_control(self.robot, return_site)
+            self.control.pose_control(self.robot, return_site, avoidance=True)
             self.current_state = "RETRIEVE"
             return "RETRIEVE"
 
