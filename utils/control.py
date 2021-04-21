@@ -213,23 +213,28 @@ class RobotControl:
         w = k * v
 
         if avoidance:
-            length = 0.7
-            height = 0.064
-            ray_from, ray_to = get_rays(pose, length, height)
-            ray_results = pb.rayTestBatch(ray_from, ray_to,
-                                          # reportHitNumber=1,
-                                          # fractionEpsilon=0.1
-                                          )
+            ray_from, ray_to = get_rays(pose, length=0.6, height=0.064)
+            ray_results = pb.rayTestBatch(ray_from, ray_to)
 
+            obstacles = set()
             for (avoidance_id, _, _, _, _) in ray_results:
                 if avoidance_id not in (-1, 0, robot_id):
-                    logging.debug('Robot {} is avoiding Body {}!'.format(robot_id, avoidance_id))
-                    other_pose, other_v = self.get_robot_state(avoidance_id)
-                    if other_v[0] != 0 or other_v[1] != 0:
-                        v = 0
-                    # if 0 <= i <= 14:
-                    #     w = 1
-                    break
+                    obstacles.add(avoidance_id)
+
+            if obstacles:
+                logging.debug('Robot {} is avoiding: {}!'.format(robot_id, obstacles))
+                v = 0
+                w = 0
+                for obstacle in obstacles:
+                    pose_b, v_b = self.get_robot_state(obstacle)
+                    u = np.array(pose_b[0:2]) - np.array(pose[0:2])
+                    phi = np.arctan2(u[1], u[0]) - yaw
+                    if phi > np.pi:
+                        phi -= 2 * np.pi
+                    elif phi <= -np.pi:
+                        phi += 2 * np.pi
+
+                    w += 1 if phi < 0 else -1
 
         self.velocity_control(robot_id, linear_velocity=v, rotational_velocity=w)
 
