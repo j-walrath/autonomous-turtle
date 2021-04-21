@@ -213,7 +213,7 @@ class RobotControl:
         w = k * v
 
         if avoidance:
-            ray_from, ray_to = get_rays(pose, length=0.6, height=0.064)
+            ray_from, ray_to = get_rays(pose, length=0.7, height=0.064)
             ray_results = pb.rayTestBatch(ray_from, ray_to)
 
             obstacles = set()
