@@ -23,6 +23,8 @@ import utils.simulator_library as lib
 from utils.fsm import RobotStateMachine
 from sequences.ucb1 import ucb1
 from sequences.function_test import function_test
+from sequences.function_test import function_test_multi
+from sequences.ray_test import ray_test
 
 logging.basicConfig(level=logging.NOTSET)
 
@@ -32,7 +34,7 @@ outDir = './outputs/'
 
 # CONSTANTS & GLOBAL VARIABLES
 DEFAULT_BOUNDS = (-5, 5)   # area bounds for sim world
-SIM_SEQUENCE = ucb1
+SIM_SEQUENCE = ray_test
 
 objects = []               # list of body unique object IDs
 object_states = {}         # key: object ID, val: string state of object
@@ -67,7 +69,9 @@ def init_sim(numObjects=0, numRobots=0):  # PYBULLET INIT
     physClient = pbc.BulletClient(connection_mode=p.GUI)
     physClient.setAdditionalSearchPath(pybullet_data.getDataPath())
     physClient.setGravity(0, 0, -9.807)
-    physClient.resetDebugVisualizerCamera(5, 0, -89, [2.5, 2.5, 0])  # overhead camera perspective
+    p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
+    physClient.resetDebugVisualizerCamera(6, 0, -89, [0, 0, 0])  # overhead camera perspective
+    # physClient.resetDebugVisualizerCamera(5, 0, -89, [2.5, 2.5, 0])  # overhead camera perspective (pos grid)
 
     # LOAD PLANE
     lib.load_plane(physClient)
@@ -98,7 +102,7 @@ def init_states(physClient):
 # TODO: Record frames/stats and save to output
 if __name__ == "__main__":
     logging.info('Initializing GUI Simulator...')
-    pb = init_sim(numObjects=0, numRobots=1)
+    pb = init_sim(numObjects=0, numRobots=0)
 
     lib.step(pb, 100)
 
