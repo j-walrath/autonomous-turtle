@@ -32,7 +32,7 @@ def curvature(r, theta, delta):
     k1 = 1
 
     # timescale factor between fast subsystem and slow manifold
-    k2 = 8
+    k2 = 5
 
     return -(1/r)*(k2*(delta-np.arctan(-k1*theta)) + (1 + k1/(1+(k1*theta)**2))*np.sin(delta))
 
@@ -45,6 +45,40 @@ def compute_v(k, vmax):
     gamma = 1
 
     return vmax / (1 + (beta*abs(k)**gamma))
+
+
+def get_rays(pose, length, height):
+    (x, y, yaw) = pose
+    sideLength = length/2
+    rayFrom = []
+    rayTo = []
+
+    rayFrom.append([x + 0.15 * np.cos(yaw), y + 0.15 * np.sin(yaw), height])
+    rayTo.append([rayFrom[0][0] + length * np.cos(yaw), rayFrom[0][1] + length * np.sin(yaw), height])
+
+    for i in np.linspace(0.02, 0.11, 6):
+        dx = i / length * (rayFrom[0][1] - rayTo[0][1])
+        dy = i / length * (rayFrom[0][0] - rayTo[0][0])
+        rayFrom.append([rayFrom[0][0] + dx, rayFrom[0][1] + dy, height])
+        rayTo.append([rayTo[0][0] + dx, rayTo[0][1] + dy, height])
+
+    for i in np.linspace(-np.pi / 2, 0, 8, endpoint=False):
+        rayFrom.append(rayFrom[6])
+        rayTo.append(
+            [rayFrom[6][0] + sideLength * np.cos(yaw + i), rayFrom[6][1] + sideLength * np.sin(yaw + i), height])
+
+    for i in np.linspace(-0.02, -0.11, 6):
+        dx = i / length * (rayFrom[0][1] - rayTo[0][1])
+        dy = i / length * (rayFrom[0][0] - rayTo[0][0])
+        rayFrom.append([rayFrom[0][0] + dx, rayFrom[0][1] + dy, height])
+        rayTo.append([rayTo[0][0] + dx, rayTo[0][1] + dy, height])
+
+    for i in np.linspace(np.pi / 2, 0, 8, endpoint=False):
+        rayFrom.append(rayFrom[-1])
+        rayTo.append(
+            [rayFrom[-1][0] + sideLength * np.cos(yaw + i), rayFrom[-1][1] + sideLength * np.sin(yaw + i), height])
+
+    return rayFrom, rayTo
 
 
 class RobotControl:
@@ -157,7 +191,7 @@ class RobotControl:
         closest_point_index = np.argmin(distances_to_points)
         return closest_points[closest_point_index][6]
 
-    def pose_control(self, robot_id, destination):
+    def pose_control(self, robot_id, destination, avoidance=True):
         pose, v_current = self.get_robot_state(robot_id=robot_id)
         yaw = pose[2]
 
@@ -178,12 +212,31 @@ class RobotControl:
         v = compute_v(k, self.max_linear_velocity)
         w = k * v
 
+        if avoidance:
+            length = 0.7
+            height = 0.064
+            ray_from, ray_to = get_rays(pose, length, height)
+            ray_results = pb.rayTestBatch(ray_from, ray_to,
+                                          # reportHitNumber=1,
+                                          # fractionEpsilon=0.1
+                                          )
+
+            for (avoidance_id, _, _, _, _) in ray_results:
+                if avoidance_id not in (-1, 0, robot_id):
+                    logging.debug('Robot {} is avoiding Body {}!'.format(robot_id, avoidance_id))
+                    other_pose, other_v = self.get_robot_state(avoidance_id)
+                    if other_v[0] != 0 or other_v[1] != 0:
+                        v = 0
+                    # if 0 <= i <= 14:
+                    #     w = 1
+                    break
+
         self.velocity_control(robot_id, linear_velocity=v, rotational_velocity=w)
 
         return v, w
 
     # CURRENTLY DEPRECATED
-    def pose_control_oa_v1(self, robot_id, pose_dest, pose_robot, laser_scan_data=[], gain_oa=2.0, dist_threshold=.8):
+    def smart_pose_control(self, robot_id, pose_dest, pose_robot, laser_scan_data=[], gain_oa=2.0, dist_threshold=.8):
         vec_to_dest = (pose_dest[0] - pose_robot[0],
                        pose_dest[1] - pose_robot[1])
         unit_vec_to_dest = normalize_vector(vec_to_dest)
