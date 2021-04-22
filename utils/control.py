@@ -31,17 +31,17 @@ def compute_rotational_velocity(yaw_robot, yaw_target):
 
 def curvature(r, theta, delta):
     # ratio of rate of change in theta to the rate of change in r
-    k1 = 1
+    k1 = 1.5
 
     # timescale factor between fast subsystem and slow manifold
-    k2 = 4
+    k2 = 8
 
     return -(1/r)*(k2*(delta-np.arctan(-k1*theta)) + (1 + k1/(1+(k1*theta)**2))*np.sin(delta))
 
 
 def compute_v(k, vmax):
     # higher beta = velocity drops more quickly as a function of k
-    beta = 0.4
+    beta = 0.6
 
     # higher gamma = sharper peak for v/vmax vs k curve
     gamma = 1
@@ -200,7 +200,7 @@ class RobotControl:
         closest_point_index = np.argmin(distances_to_points)
         return closest_points[closest_point_index][6]
 
-    def pose_control(self, robot_id, destination, avoidance=True):
+    def pose_control(self, robot_id, destination, avoidance=False):
         pose, v_current = self.get_robot_state(robot_id=robot_id)
         yaw = pose[2]
 
