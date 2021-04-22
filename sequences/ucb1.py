@@ -44,15 +44,9 @@ def ucb1(pb, objects, object_states, robots, robot_fsms):
         for j in (range(M - 1, -1, -1) if i & 1 else range(M)):
             visits[i][j] += 1
             robot_fsm.set_destination(lib.get_cell_coordinates(i, j))
-
-            while True:
-                lib.cycle_robot(robot_fsm)
-                lib.step(pb, int(lib.SIM_FREQUENCY/lib.CONTROL_FREQUENCY))
-
-                if robot_fsm.current_state == "NONE":
-                    lib.step(pb, 100)
-                    reward[i][j] = controller.measure(robot, robot_fsm.obj_states, noise="GAUSSIAN", sigma=var)
-                    break
+            lib.cycle_robot(pb, robot_fsm)
+            lib.step(pb, 100)
+            reward[i][j] = controller.measure(robot, robot_fsm.obj_states, noise="GAUSSIAN", sigma=var)
 
     # RUN UCB1
     for i in range(1, T+1):
@@ -61,30 +55,21 @@ def ucb1(pb, objects, object_states, robots, robot_fsms):
         target = np.unravel_index(np.argmax(Q), Q.shape)
 
         robot_fsm.set_destination(lib.get_cell_coordinates(target[0], target[1]))
-        while True:
-            lib.cycle_robot(robot_fsm)
-            lib.step(pb, int(lib.SIM_FREQUENCY / lib.CONTROL_FREQUENCY))
+        lib.cycle_robot(pb, robot_fsm)
 
-            if robot_fsm.current_state == "NONE":
-                lib.step(pb, 100)
-                measurement = controller.measure(robot, robot_fsm.obj_states, noise="GAUSSIAN", sigma=var)
-                reward[target] += measurement
+        lib.step(pb, 100)
+        measurement = controller.measure(robot, robot_fsm.obj_states, noise="GAUSSIAN", sigma=var)
+        reward[target] += measurement
 
-                # PICKUP OBJECT
-                for obj in objects:
-                    if object_states[obj] == "ON_GROUND" and in_cell(target, controller.get_object_state(obj)):
-                        robot_fsm.set_target(obj)
-                        break
-
-                while True:
-                    lib.cycle_robot(robot_fsm)
-                    lib.step(pb, int(lib.SIM_FREQUENCY / lib.CONTROL_FREQUENCY))
-
-                    if robot_fsm.current_state == "NONE":
-                        break
-
-                visits[target] += 1
+        # PICKUP OBJECT
+        for obj in objects:
+            if object_states[obj] == "ON_GROUND" and in_cell(target, controller.get_object_state(obj)):
+                robot_fsm.set_target(obj)
                 break
+
+        lib.cycle_robot(pb, robot_fsm)
+        visits[target] += 1
+
         logging.info("Time step: {:<2} | Target: {}".format(i, target))
         logging.info(visits)
 
