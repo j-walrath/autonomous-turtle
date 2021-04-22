@@ -22,9 +22,11 @@ import pybullet_data
 import utils.simulator_library as lib
 from utils.fsm import RobotStateMachine
 from sequences.ucb1 import ucb1
+from sequences.ucb1_multi import ucb1_multi
 from sequences.function_test import function_test
 from sequences.function_test import function_test_multi
 from sequences.ray_test import ray_test
+from sequences.visit_cells import visit_cells
 
 logging.basicConfig(level=logging.NOTSET)
 
@@ -34,7 +36,7 @@ outDir = './outputs/'
 
 # CONSTANTS & GLOBAL VARIABLES
 DEFAULT_BOUNDS = (-5, 5)   # area bounds for sim world
-SIM_SEQUENCE = function_test_multi
+SIM_SEQUENCE = ucb1_multi
 
 objects = []               # list of body unique object IDs
 object_states = {}         # key: object ID, val: string state of object
@@ -70,8 +72,8 @@ def init_sim(numObjects=0, numRobots=0):  # PYBULLET INIT
     physClient.setAdditionalSearchPath(pybullet_data.getDataPath())
     physClient.setGravity(0, 0, -9.807)
     p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
-    physClient.resetDebugVisualizerCamera(6, 0, -89, [0, 0, 0])  # overhead camera perspective
-    # physClient.resetDebugVisualizerCamera(5, 0, -89, [2.5, 2.5, 0])  # overhead camera perspective (pos grid)
+    # physClient.resetDebugVisualizerCamera(6, 0, -89, [0, 0, 0])  # overhead camera perspective
+    physClient.resetDebugVisualizerCamera(4, 0, -89, [2.5, 2.5, 0])  # overhead camera perspective (pos grid)
 
     # LOAD PLANE
     lib.load_plane(physClient)
@@ -94,7 +96,7 @@ def init_states(physClient):
         object_states[obj] = 'ON_GROUND'
 
     for robot in robots:
-        robot_fsms[robot] = RobotStateMachine(physClient, object_states, robot, max_linear_v=5.0)
+        robot_fsms[robot] = RobotStateMachine(physClient, object_states, robot)
 
 
 # RUN SIM
