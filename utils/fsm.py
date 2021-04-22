@@ -192,7 +192,7 @@ class RobotStateMachine:
             self.dest_dist = dist
 
             if self.dest_dist > DISTANCE_THRESHOLD:
-                self.control.pose_control(self.robot, self.destination, avoidance=True)
+                self.control.pose_control(self.robot, self.destination, avoidance=False)
                 self.current_state = "MOVE"
                 return "MOVE"
 
