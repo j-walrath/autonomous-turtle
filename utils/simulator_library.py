@@ -59,12 +59,19 @@ def load_robots(pb, locations, collision=True):
     return robots
 
 
-def cycle_robot(fsm: RobotStateMachine, controller: RobotControl = None):
+def cycle_robot(pb, fsm: RobotStateMachine, controller: RobotControl = None):
     if controller is None:
         controller = fsm.control
-    manipulator_state = controller.get_manipulator_state(fsm.robot)
-    robot_state = controller.get_robot_state(fsm.robot)
-    fsm.run_once((manipulator_state, robot_state))
+
+    while True:
+        manipulator_state = controller.get_manipulator_state(fsm.robot)
+        robot_state = controller.get_robot_state(fsm.robot)
+        fsm.run_once((manipulator_state, robot_state))
+
+        step(pb, int(SIM_FREQUENCY/CONTROL_FREQUENCY))
+
+        if fsm.current_state == "NONE":
+            break
 
 
 def step(pb, t):
