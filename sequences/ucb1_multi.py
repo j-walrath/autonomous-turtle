@@ -88,6 +88,9 @@ def ucb1_multi(pb, objects: list, object_states: dict, robots: list, robot_fsms:
 
     object_locations = np.random.multivariate_normal(mu, sig, N)
 
+    for x, y in object_locations:
+        field[math.floor(x)][math.floor(y)] += 1
+
     for obj in lib.load_objects(pb, object_locations):
         objects.append(obj)
         object_states[obj] = "ON_GROUND"
