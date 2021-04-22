@@ -39,7 +39,7 @@ def load_objects(pb, locations, collision=False):
     return objects
 
 
-def load_robots(pb, locations, collision=False):
+def load_robots(pb, locations, collision=True):
     robots = []
     orn = pb.getQuaternionFromEuler([0, 0, 0])
     for loc in locations:
