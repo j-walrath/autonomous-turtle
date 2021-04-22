@@ -101,8 +101,8 @@ def ucb1_multi(pb, objects: list, object_states: dict, robots: list, robot_fsms:
         for x in range(M):
             for y in (range(M-1, -1, -1) if x & 1 else range(M)):
                 robot_fsms[robot].set_destination(lib.get_cell_coordinates(x, y))
-                lib.cycle_robot(robot_fsms[robot])
-                lib.step(pb, 100)
+                lib.cycle_robot(pb, robot_fsms[robot])
+                lib.step(pb, 10)
 
                 logging.debug("Robot {} measured cell ({}, {})".format(robot, x, y))
                 visits[agent][x][y] += 1
@@ -110,7 +110,7 @@ def ucb1_multi(pb, objects: list, object_states: dict, robots: list, robot_fsms:
 
         # Return to start
         robot_fsms[robot].set_destination(coords[agent])
-        lib.cycle_robot(robot_fsms[robot])
+        lib.cycle_robot(pb, robot_fsms[robot])
         # Calculate expected mean
         exp_mean[agent] = np.divide(reward[agent], visits[agent])
 
@@ -129,8 +129,8 @@ def ucb1_multi(pb, objects: list, object_states: dict, robots: list, robot_fsms:
 
             # Make measurement
             robot_fsms[robot].set_destination(lib.get_cell_coordinates(target[0], target[1]))
-            lib.cycle_robot(robot_fsms[robot])
-            lib.step(pb, 20)
+            lib.cycle_robot(pb, robot_fsms[robot])
+            lib.step(pb, 10)
 
             measurement = controller.measure(robot, objects, noise="GAUSSIAN", sigma=var)
             idxs.append(target)
@@ -153,11 +153,11 @@ def ucb1_multi(pb, objects: list, object_states: dict, robots: list, robot_fsms:
                 if object_states[obj] == "ON_GROUND" and in_cell(target, controller.get_object_state(obj)):
                     robot_fsms[robot].set_target(obj)
                     break
-            lib.cycle_robot(robot_fsms[robot])
+            lib.cycle_robot(pb, robot_fsms[robot])
 
             # Return to start location
             robot_fsms[robot].set_destination(coords[agent])
-            lib.cycle_robot(robot_fsms[robot])
+            lib.cycle_robot(pb, robot_fsms[robot])
 
         # Exchange messages and adjust expected mean
         for agent in range(K):
