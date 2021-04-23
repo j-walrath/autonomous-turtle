@@ -1,5 +1,5 @@
 import math
-import rvo.math as rvo_math
+import rvo_math
 
 from .line import Line
 from .vector import Vector2

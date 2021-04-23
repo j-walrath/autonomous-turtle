@@ -36,7 +36,7 @@ outDir = './outputs/'
 
 # CONSTANTS & GLOBAL VARIABLES
 DEFAULT_BOUNDS = (-5, 5)   # area bounds for sim world
-SIM_SEQUENCE = ucb1_multi
+SIM_SEQUENCE = function_test_multi
 
 objects = []               # list of body unique object IDs
 object_states = {}         # key: object ID, val: string state of object

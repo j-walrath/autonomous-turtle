@@ -45,9 +45,9 @@ def ucb1_multi(pb, objects: list, object_states: dict, robots: list, robot_fsms:
     controller = RobotControl(pb)
 
     # INITIALIZE COMMUNICATION NETWORK
-    for i in range(K):
-        msgTx[i] = []
-        msgRx[i] = []
+    for agent in range(K):
+        msgTx[agent] = []
+        msgRx[agent] = []
         regret.append([0])
 
     # If graph[i][j] = 1 then there is an edge between agents i and j (graph must be symmetric)
@@ -133,6 +133,11 @@ def ucb1_multi(pb, objects: list, object_states: dict, robots: list, robot_fsms:
             Q = exp_mean[agent] + var * np.divide(math.sqrt(2*(xi + 1)*math.log(T)), np.sqrt(visits[agent]))
             target = np.unravel_index(np.argmax(Q), Q.shape)
 
+            # Extra movement to avoid bumping into other robots
+            robot_fsms[robot].set_destination((5, 5))
+            lib.cycle_robot(pb, robot_fsms[robot])
+            lib.step(pb, 10)
+
             # Make measurement
             robot_fsms[robot].set_destination(lib.get_cell_coordinates(target[0], target[1]))
             lib.cycle_robot(pb, robot_fsms[robot])
@@ -169,17 +174,18 @@ def ucb1_multi(pb, objects: list, object_states: dict, robots: list, robot_fsms:
         for agent in range(K):
             new_visits = np.zeros((M, M))
             # Check new messages, skipping repeats
-            for i in range(K):
-                if graph[agent][i] == 1:
+            for neighbor in range(K):
+                if graph[agent][neighbor] == 1:
                     received = msgRx[agent]
-                    sent = msgTx[i]
-                    for msg in sent:
+                    sent = msgTx[neighbor]
+                    for i in range(len(sent)):
+                        msg = sent[i]
                         if received.count(msg) == 0:
                             received.append(msg)
-                            idx = msg[2]
-                            visits[agent][idx] += 1
-                            new_visits[idx] += 1
-                            reward[agent][idx] += msg[3]
+                            cell = msg[2]
+                            visits[agent][cell] += 1
+                            new_visits[cell] += 1
+                            reward[agent][cell] += msg[3]
                     msgRx[agent] = received
 
             # Calculate expected mean
