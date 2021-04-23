@@ -32,8 +32,8 @@ def ucb1_multi(pb, objects: list, object_states: dict, robots: list, robot_fsms:
     reward = np.zeros((K, M, M))     # Sum of rewards by location for each robot
     exp_mean = np.zeros((K, M, M))   # Expected mean reward by location for each robot
 
-    T = N                            # Number of time steps
-    delta = 1                        # Reward decreases by delta each visit
+    # T = N                            # Number of time steps
+    # delta = 1                        # Reward decreases by delta each visit
     xi = 2                           # Constant Xi > 1
     gamma = 3                        # Max message length
 
@@ -88,8 +88,10 @@ def ucb1_multi(pb, objects: list, object_states: dict, robots: list, robot_fsms:
 
     object_locations = np.random.multivariate_normal(mu, sig, N)
 
-    for x, y in object_locations:
-        field[math.floor(x)][math.floor(y)] += 1
+    for i, j in object_locations:
+        x = math.floor(i) if i < 5 else 4
+        y = math.floor(j) if j < 5 else 4
+        field[x][y] += 1
 
     for obj in lib.load_objects(pb, object_locations):
         objects.append(obj)
@@ -98,6 +100,7 @@ def ucb1_multi(pb, objects: list, object_states: dict, robots: list, robot_fsms:
     logging.debug("Executing Simulation...")
 
     # INITIALIZE AGENT
+    T = 0
     for agent in range(K):
         robot = robots[agent]
         # Explore cells
@@ -107,7 +110,7 @@ def ucb1_multi(pb, objects: list, object_states: dict, robots: list, robot_fsms:
                 lib.cycle_robot(pb, robot_fsms[robot])
                 lib.step(pb, 10)
 
-                logging.debug("Robot {} measured cell ({}, {})".format(robot, x, y))
+                logging.debug("{} measured cell ({}, {})".format(lib.NAMES[agent], x, y))
                 visits[agent][x][y] += 1
                 reward[agent][x][y] += controller.measure(robot, object_states, noise="GAUSSIAN", sigma=var)
 
@@ -135,7 +138,7 @@ def ucb1_multi(pb, objects: list, object_states: dict, robots: list, robot_fsms:
             lib.cycle_robot(pb, robot_fsms[robot])
             lib.step(pb, 10)
 
-            measurement = controller.measure(robot, objects, noise="GAUSSIAN", sigma=var)
+            measurement = controller.measure(robot, object_states, noise="GAUSSIAN", sigma=var)
             idxs.append(target)
 
             # Calculate regret
