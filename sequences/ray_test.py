@@ -42,60 +42,69 @@ def ray_test(pb, objects, object_states, robots, robot_fsms):
     #     else:
     #         rayIds.append(-1)
 
-    length = 0.7
+    length = 0.4
     sideLength = length * 0.6
     height = 0.055
     factor = 1.5
 
     (x, y, yaw), _ = controller.get_robot_state(robots[-1])
-    rayFrom.append([x + 0.15 * np.cos(yaw), y + 0.15 * np.sin(yaw), height])
+    rayFrom.append([x * np.cos(yaw), y * np.sin(yaw), height])
     rayTo.append([rayFrom[0][0] + length * np.cos(yaw), rayFrom[0][1] + length * np.sin(yaw), height])
     if replaceLines:
         rayIds.append(p.addUserDebugLine(rayFrom[0], rayTo[0], rayMissColor))
     else:
         rayIds.append(-1)
 
-    for i in np.linspace(0.02, 0.11, 6):
-        dx = i/length * (rayFrom[0][1]-rayTo[0][1])
-        dy = i/length * (rayFrom[0][0]-rayTo[0][0])
-        rayFrom.append([rayFrom[0][0] + dx, rayFrom[0][1] + dy, height])
-        # rayTo.append([rayTo[0][0] + dx, rayTo[0][1] + dy, height])
-        rayTo.append([rayFrom[-1][0] + length * np.cos(yaw-(factor*i)), rayFrom[-1][1] + length * np.sin(yaw-(factor*i)), height])
-
-        if replaceLines:
-            rayIds.append(p.addUserDebugLine(rayFrom[0], rayTo[0], rayMissColor))
-        else:
-            rayIds.append(-1)
-
-    for i in np.linspace(-0.02, -0.11, 6):
-        dx = i / length * (rayFrom[0][1] - rayTo[0][1])
-        dy = i / length * (rayFrom[0][0] - rayTo[0][0])
-        rayFrom.append([rayFrom[0][0] + dx, rayFrom[0][1] + dy, height])
-        # rayTo.append([rayTo[0][0] + dx, rayTo[0][1] + dy, height])
-        rayTo.append([rayFrom[-1][0] + length * np.cos(yaw-(factor*i)), rayFrom[-1][1] + length * np.sin(yaw-(factor*i)), height])
-
-        if replaceLines:
-            rayIds.append(p.addUserDebugLine(rayFrom[0], rayTo[0], rayMissColor))
-        else:
-            rayIds.append(-1)
-
-    for i in np.linspace(3*np.pi/4, 0, 15, endpoint=False):
+    for i in np.linspace(0, 2*np.pi, 40):
         rayFrom.append(rayFrom[-1])
-        rayTo.append([rayFrom[-1][0] + sideLength * np.cos(yaw+i), rayFrom[-1][1] + sideLength * np.sin(yaw+i), height])
+        rayTo.append([rayFrom[-1][0] + length * np.cos(yaw+i), rayFrom[-1][1] + length * np.sin(yaw+i), height])
 
         if replaceLines:
             rayIds.append(p.addUserDebugLine(rayFrom[0], rayTo[0], rayMissColor))
         else:
             rayIds.append(-1)
 
-    for i in np.linspace(-3*np.pi/4, 0, 15, endpoint=False):
-        rayFrom.append(rayFrom[6])
-        rayTo.append([rayFrom[6][0] + sideLength * np.cos(yaw+i), rayFrom[6][1] + sideLength * np.sin(yaw+i), height])
-
-        if replaceLines:
-            rayIds.append(p.addUserDebugLine(rayFrom[0], rayTo[0], rayMissColor))
-        else:
-            rayIds.append(-1)
+    # for i in np.linspace(0.02, 0.11, 6):
+    #     dx = i/length * (rayFrom[0][1]-rayTo[0][1])
+    #     dy = i/length * (rayFrom[0][0]-rayTo[0][0])
+    #     rayFrom.append([rayFrom[0][0] + dx, rayFrom[0][1] + dy, height])
+    #     # rayTo.append([rayTo[0][0] + dx, rayTo[0][1] + dy, height])
+    #     rayTo.append([rayFrom[-1][0] + length * np.cos(yaw-(factor*i)), rayFrom[-1][1] + length * np.sin(yaw-(factor*i)), height])
+    #
+    #     if replaceLines:
+    #         rayIds.append(p.addUserDebugLine(rayFrom[0], rayTo[0], rayMissColor))
+    #     else:
+    #         rayIds.append(-1)
+    #
+    # for i in np.linspace(-0.02, -0.11, 6):
+    #     dx = i / length * (rayFrom[0][1] - rayTo[0][1])
+    #     dy = i / length * (rayFrom[0][0] - rayTo[0][0])
+    #     rayFrom.append([rayFrom[0][0] + dx, rayFrom[0][1] + dy, height])
+    #     # rayTo.append([rayTo[0][0] + dx, rayTo[0][1] + dy, height])
+    #     rayTo.append([rayFrom[-1][0] + length * np.cos(yaw-(factor*i)), rayFrom[-1][1] + length * np.sin(yaw-(factor*i)), height])
+    #
+    #     if replaceLines:
+    #         rayIds.append(p.addUserDebugLine(rayFrom[0], rayTo[0], rayMissColor))
+    #     else:
+    #         rayIds.append(-1)
+    #
+    # for i in np.linspace(3*np.pi/4, 0, 15, endpoint=False):
+    #     rayFrom.append(rayFrom[-1])
+    #     rayTo.append([rayFrom[-1][0] + sideLength * np.cos(yaw+i), rayFrom[-1][1] + sideLength * np.sin(yaw+i), height])
+    #
+    #     if replaceLines:
+    #         rayIds.append(p.addUserDebugLine(rayFrom[0], rayTo[0], rayMissColor))
+    #     else:
+    #         rayIds.append(-1)
+    #
+    # for i in np.linspace(-3*np.pi/4, 0, 15, endpoint=False):
+    #     rayFrom.append(rayFrom[6])
+    #     rayTo.append([rayFrom[6][0] + sideLength * np.cos(yaw+i), rayFrom[6][1] + sideLength * np.sin(yaw+i), height])
+    #
+    #     if replaceLines:
+    #         rayIds.append(p.addUserDebugLine(rayFrom[0], rayTo[0], rayMissColor))
+    #     else:
+    #         rayIds.append(-1)
 
     numSteps = 327680
     for i in range(numSteps):
