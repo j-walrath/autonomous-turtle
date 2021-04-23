@@ -9,6 +9,7 @@ PLANE_MODEL = "./urdf_models/plane_with_dumpsters.urdf"
 
 SIM_FREQUENCY = 240
 CONTROL_FREQUENCY = 40
+NAMES = ["Fluffy", "Oogway", "Crush", "Franklin", "Genbu", "Yertle", "Leonardo", "Raphael", "Donatello", "Michelangelo"]
 
 
 def load_plane(pb, position=None, lateralFriction=3.0, spinningFriction=0.03, rollingFriction=0.03, restitution=0.5,
