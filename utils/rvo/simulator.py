@@ -5,6 +5,7 @@ import rvo_math
 from .kdtree import KdTree
 from .agent import Agent
 from .obstacle import Obstacle
+from .vector import Vector2
 
 
 class Simulator:
@@ -193,3 +194,9 @@ class Simulator:
             timeStep (float): The time step of the simulation. Must be positive.
         """
         self.time_step_ = timeStep
+
+    def set_agent_position(self, agentNo, position):
+        self.agents_[agentNo].position_ = Vector2(x=position[0], y=position[1])
+
+    def set_agent_velocity(self, agentNo, velocity):
+        self.agents_[agentNo].velocity_ = Vector2(x=velocity[0], y=velocity[1])
