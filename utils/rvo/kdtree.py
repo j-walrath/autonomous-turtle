@@ -1,4 +1,4 @@
-import rvo_math
+from . import rvo_math
 
 from .obstacle import Obstacle
 

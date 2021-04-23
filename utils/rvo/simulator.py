@@ -1,6 +1,6 @@
 from ctypes import ArgumentError
 
-import rvo_math
+from . import rvo_math
 
 from .kdtree import KdTree
 from .agent import Agent
