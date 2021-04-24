@@ -205,7 +205,7 @@ class RobotControl:
         closest_point_index = np.argmin(distances_to_points)
         return closest_points[closest_point_index][6]
 
-    def pose_control(self, robot_id, destination, orca=False):
+    def pose_control(self, robot_id, destination):
         pose, v_current = self.get_robot_state(robot_id=robot_id)
         yaw = pose[2]
 
