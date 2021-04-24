@@ -305,7 +305,7 @@ class Agent:
         """
 
         if rangeSq is None:
-            rangeSq = rvo_math.abs_sq(self.neighbor_dist_)
+            rangeSq = rvo_math.square(self.time_horizon_obst_ * self.max_speed_ + self.radius_)
 
         for agent in agents:
             if self != agent:
