@@ -239,7 +239,7 @@ class RobotControl:
                 neighbors.add(neighbor_id)
 
         if not neighbors:
-            self.velocity_control(linear_velocity=v, rotational_velocity=w)
+            self.velocity_control(robot_id, linear_velocity=v, rotational_velocity=w)
             return v, w
         else:
             logging.debug('{} is moving around neighbors with IDs: {}'.format(robot_id, neighbors))
@@ -263,10 +263,10 @@ class RobotControl:
             # Convert adjusted velocity into actual v, w control inputs
             v_adjusted = np.array([agent.new_velocity_.x, agent.new_velocity_.y])
             phi = normalize_angle(np.arctan2(v_adjusted[1], v_adjusted[0]))
-            v_new = norm(rotate(v_adjusted), (phi - yaw))
+            v_new = norm(rotate(v_adjusted, (phi - yaw)))
             w_new = (phi - yaw) * lib.CONTROL_FREQUENCY     # w = theta / dt
 
-            self.velocity_control(linear_velocity=v_new, rotational_velocity=w_new)
+            self.velocity_control(robot_id, linear_velocity=v_new, rotational_velocity=w_new)
 
         return v, w
 
