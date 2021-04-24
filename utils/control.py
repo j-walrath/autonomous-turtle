@@ -2,6 +2,7 @@ import numpy as np
 from numpy.linalg import norm
 from scipy.linalg import logm
 from math import floor
+from utils.rvo.agent import Agent
 import logging
 from utils import simulator_library as lib
 
@@ -200,7 +201,7 @@ class RobotControl:
         closest_point_index = np.argmin(distances_to_points)
         return closest_points[closest_point_index][6]
 
-    def pose_control(self, robot_id, destination, avoidance=False):
+    def pose_control(self, robot_id, destination, orca=False):
         pose, v_current = self.get_robot_state(robot_id=robot_id)
         yaw = pose[2]
 
@@ -221,74 +222,46 @@ class RobotControl:
         v = compute_v(k, self.max_linear_velocity)
         w = k * v
 
-        if avoidance:
-            ray_from, ray_to = get_rays(pose, length=0.7, height=0.055)
-            ray_results = pb.rayTestBatch(ray_from, ray_to)
-
-            obstacles = set()
-            for (avoidance_id, _, _, _, _) in ray_results:
-                if (avoidance_id not in (-1, 0, robot_id)) and (pb.getNumJoints(avoidance_id) > 0):
-                    obstacles.add(avoidance_id)
-
-            if obstacles:
-                logging.debug('Robot {} is avoiding: {}!'.format(robot_id, obstacles))
-                v = 0
-                w = 0
-                for obstacle in obstacles:
-                    pose_b, v_b = self.get_robot_state(obstacle)
-                    u = np.array(pose_b[0:2]) - np.array(pose[0:2])
-                    phi = np.arctan2(u[1], u[0]) - yaw
-                    if phi > np.pi:
-                        phi -= 2 * np.pi
-                    elif phi <= -np.pi:
-                        phi += 2 * np.pi
-
-                    w += 2 if phi < 0 else -2
-
-        self.velocity_control(robot_id, linear_velocity=v, rotational_velocity=w)
-
         return v, w
 
     # CURRENTLY DEPRECATED
-    def smart_pose_control(self, robot_id, pose_dest, pose_robot, laser_scan_data=[], gain_oa=2.0, dist_threshold=.8):
-        vec_to_dest = (pose_dest[0] - pose_robot[0],
-                       pose_dest[1] - pose_robot[1])
-        unit_vec_to_dest = normalize_vector(vec_to_dest)
-        unit_yaw_vec = np.array((np.cos(pose_robot[2]), np.sin(pose_robot[2])))
+    def smart_pose_control(self, robot_id, destination):
+        pose, v_current = self.get_robot_state(robot_id)
+        v, w = self.pose_control(robot_id, destination)
 
-        cor_coeff = np.dot(unit_yaw_vec, unit_vec_to_dest)
-        dist_to_dest = np.linalg.norm(vec_to_dest)
-        linear_vel = min(self.max_linear_velocity, 1.0 * cor_coeff * dist_to_dest)
-        linear_vel = max(0.05, linear_vel)
+        rays_from, rays_to = get_rays(pose, 5.0, 0.055)
+        ray_results = pb.rayTestBatch(rays_from, rays_to)
 
-        yaw_target = np.arctan2(pose_dest[1] - pose_robot[1], pose_dest[0] - pose_robot[0])
-        rot_vec = compute_rotational_velocity(pose_robot[2], yaw_target)
+        neighbors = set()
+        for (neighbor_id, _, _, _, _) in ray_results:
+            if neighbor_id not in (-1, 0, robot_id) and pb.getNumJoints(neighbor_id) > 1:
+                neighbors.add(neighbor_id)
 
-        # process laser scan data
-        for data in laser_scan_data:
-            x_b, y_b, _ = data
+        if not neighbors:
+            self.velocity_control(linear_velocity=v, rotational_velocity=w)
+            return v, w
+        else:
+            logging.debug('{} is moving around neighbors with IDs: {}'.format(robot_id, neighbors))
+            agent_neighbors = []
+            for neighbor in neighbors:
+                neighbor_pose, neighbor_v = self.get_robot_state(neighbor_id)
+                agent_neighbors.append(lib.get_agent(neighbor, neighbor_pose[0:2], neighbor_v[0:2]))
 
-            vec_to_data_point = np.array((x_b - pose_robot[0], y_b - pose_robot[1]))
-            dist_to_data_point = np.linalg.norm(vec_to_data_point)
-            unit_vec_to_data_point = normalize_vector(vec_to_data_point)
+            agent = lib.get_agent(robot_id, pose=pose[0:2], v=v_current[0:2])
+            agent.insert_agent_neighbors(agent_neighbors)
 
-            cor_coeff = np.dot(unit_yaw_vec, unit_vec_to_data_point)
-            if dist_to_data_point >= dist_threshold or cor_coeff <= 0: continue
+            # TODO: convert v, w to v_pref
+            agent.pref_velocity_ = 0
+            agent.compute_new_velocity()
 
-            if dist_to_data_point <= .4: linear_vel = 0.02
+            # TODO: convert v_pref to v, w
+            v_adjusted = agent.new_velocity_
+            v_new = 0
+            w_new = 0
 
-            weight = np.exp(-gain_oa * (dist_to_data_point - dist_threshold))
-            rot_direction = np.sign(np.cross((unit_vec_to_data_point[0], unit_vec_to_data_point[1], 0),
-                                             (unit_yaw_vec[0], unit_yaw_vec[1], 0))[2])
-            yaw_target = np.arctan2(unit_vec_to_data_point[1], unit_vec_to_data_point[0]) + rot_direction * np.pi / 2
-            rot_vec += weight * compute_rotational_velocity(pose_robot[2], yaw_target)
+            self.velocity_control(linear_velocity=v_new, rotational_velocity=w_new)
 
-        rot_vel = min(self.max_rotational_velocity, 1.0 * rot_vec)
-        rot_vel = max(-self.max_rotational_velocity, rot_vel)
-
-        self.velocity_control(robot_id, linear_vel, rot_vel)
-
-        return linear_vel, rot_vel
+        return v, w
 
     # Visual servoing for object pickup
     def visual_servoing(self, robot_id, target_pos, pose):
