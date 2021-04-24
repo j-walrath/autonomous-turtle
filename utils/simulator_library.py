@@ -4,7 +4,7 @@ import pybullet as p
 import utils.control
 from utils.fsm import RobotStateMachine
 from utils.control import RobotControl
-from utils.rvo.simulator import Simulator
+from utils.rvo.agent import Agent
 from utils.rvo.vector import Vector2
 
 OBJ_MODEL = "./urdf_models/objects/object.urdf"
@@ -89,18 +89,26 @@ def get_cell_coordinates(x, y):
     return x + 0.5, y + 0.5
 
 
-def get_orca():
-    new_orca = Simulator()
-    new_orca.set_time_step(1 / CONTROL_FREQUENCY)
-    new_orca.set_agent_defaults(neighborDist=3.0,
-                                maxNeighbors=10,
-                                timeHorizon=10,
-                                timeHorizonObst=10,
-                                radius=0.4,
-                                maxSpeed=utils.control.MAX_LINEAR_V,
-                                velocity=Vector2(0.0, 0.0))
-    return new_orca
+def get_agent(robot_id, pose, v):
+    agent = Agent()
+    agent.position_ = get_vec(pose)
+    agent.pref_velocity_ = get_vec(v)
+    agent.velocity_ = get_vec(v)
+    agent.id_ = robot_id
+    agent.max_neighbors_ = 10
+    agent.max_speed_ = utils.control.MAX_LINEAR_V
+    agent.neighbor_dist_ = 3.0
+    agent.radius_ = 0.4
+    agent.time_horizon_ = 10.0
+    agent.time_horizon_obst_ = 10.0
+    agent.time_step_ = 1 / CONTROL_FREQUENCY
+
+    return agent
 
 
 def update_pref_v(rvo, agentNo, v):
     rvo.set_agent_pref_velocity(agentNo, Vector2(v[0], v[1]))
+
+
+def get_vec(coords):
+    return Vector2(coords[0], coords[1])
