@@ -106,7 +106,7 @@ def get_cell_coordinates(x, y):
 
 
 def get_agent(robot_id, pose, v):
-    agent = Agent()
+    agent = Agent(robot_id)
     agent.position_ = get_vec(pose)
     agent.pref_velocity_ = get_vec(v)
     agent.velocity_ = get_vec(v)

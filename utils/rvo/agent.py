@@ -16,7 +16,7 @@ class Agent:
     Defines an agent in the simulation.
     """
 
-    def __init__(self, simulator):
+    def __init__(self, id):
         self.agent_neighbors_ = [] # (float, Agent)
         self.obstacle_neighbors_ = [] # (float, Obstacle)
         self.orca_lines_ = [] # Line
@@ -24,6 +24,7 @@ class Agent:
         self.pref_velocity_ = Vector2()
         self.velocity_ = Vector2()
         self.id_ = 0
+        self.robot_id_ = id
         self.max_neighbors_ = 0
         self.max_speed_ = 0.0
         self.neighbor_dist_ = 0.0
