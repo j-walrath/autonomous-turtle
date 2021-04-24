@@ -1,5 +1,5 @@
 import time
-from typing import List
+from typing import List, Dict
 import pybullet as p
 
 import utils.control
@@ -80,12 +80,11 @@ def cycle_robot(pb, fsm: RobotStateMachine, controller: RobotControl = None):
             break
 
 
-def cycle_robots(pb, fsms: List[RobotStateMachine], controller: RobotControl = None):
-    if controller is None:
-        controller = fsms[0].control
-
+def cycle_robots(pb, fsms: Dict[int, RobotStateMachine], controller: RobotControl = None):
     while True:
-        for fsm in fsms:
+        for fsm in fsms.values():
+            if controller is None:
+                controller = fsm.control
             manipulator_state = controller.get_manipulator_state(fsm.robot)
             robot_state = controller.get_robot_state(fsm.robot)
             fsm.run_once((manipulator_state, robot_state))
