@@ -12,22 +12,26 @@ DEG_TO_RAD = np.pi / 180
 MAX_LINEAR_V = 3.5
 
 
-def euler_to_rot_mat(yaw):
-    return np.array([[np.cos(yaw), -np.sin(yaw)],
-                     [np.sin(yaw), np.cos(yaw)]])
+def rotation_matrix(theta):
+    return np.array([[np.cos(theta), -np.sin(theta)],
+                     [np.sin(theta), np.cos(theta)]])
 
 
 def normalize_vector(v):
     return v / norm(v)
 
 
-def compute_rotational_velocity(yaw_robot, yaw_target):
-    relative_orientation = yaw_target - yaw_robot
+def normalize_angle(theta):
+    if theta > np.pi:
+        theta -= 2 * np.pi
+    elif theta <= -np.pi:
+        theta += 2 * np.pi
 
-    relative_orientation_mat = np.array([[np.cos(relative_orientation), -np.sin(relative_orientation)],
-                                         [np.sin(relative_orientation), np.cos(relative_orientation)]])
+    return theta
 
-    return 2*logm(relative_orientation_mat)[1, 0]
+
+def rotate(vector, angle):
+    return np.around(np.dot(rotation_matrix(angle), vector))
 
 
 def curvature(r, theta, delta):
@@ -212,11 +216,7 @@ class RobotControl:
         theta = 0
 
         # orientation of robot w.r.t. line of sight (-pi, pi]
-        delta = yaw - np.arctan2(r[1], r[0])
-        if delta > np.pi:
-            delta -= 2 * np.pi
-        elif delta <= -np.pi:
-            delta += 2 * np.pi
+        delta = normalize_angle(yaw - np.arctan2(r[1], r[0]))
 
         k = curvature(norm(r), theta, delta)
         v = compute_v(k, self.max_linear_velocity)
@@ -227,6 +227,7 @@ class RobotControl:
     # CURRENTLY DEPRECATED
     def smart_pose_control(self, robot_id, destination):
         pose, v_current = self.get_robot_state(robot_id)
+        yaw = pose[2]
         v, w = self.pose_control(robot_id, destination)
 
         rays_from, rays_to = get_rays(pose, 5.0, 0.055)
@@ -244,20 +245,26 @@ class RobotControl:
             logging.debug('{} is moving around neighbors with IDs: {}'.format(robot_id, neighbors))
             agent_neighbors = []
             for neighbor in neighbors:
-                neighbor_pose, neighbor_v = self.get_robot_state(neighbor_id)
+                neighbor_pose, neighbor_v = self.get_robot_state(neighbor)
                 agent_neighbors.append(lib.get_agent(neighbor, neighbor_pose[0:2], neighbor_v[0:2]))
 
             agent = lib.get_agent(robot_id, pose=pose[0:2], v=v_current[0:2])
             agent.insert_agent_neighbors(agent_neighbors)
 
-            # TODO: convert v, w to v_pref
-            agent.pref_velocity_ = 0
+            # Convert desired control inputs v, w into preferred velocity vector v_pref
+            vec_v = np.array([v * np.cos(yaw), v * np.sin(yaw)])
+            theta = w * 1 / lib.CONTROL_FREQUENCY   # theta = w * dt
+            v_pref = rotate(vec_v, theta)
+
+            # Get adjusted velocity from ORCA given v_pref
+            agent.pref_velocity_ = lib.get_vec(v_pref)
             agent.compute_new_velocity()
 
-            # TODO: convert v_pref to v, w
-            v_adjusted = agent.new_velocity_
-            v_new = 0
-            w_new = 0
+            # Convert adjusted velocity into actual v, w control inputs
+            v_adjusted = np.array([agent.new_velocity_.x, agent.new_velocity_.y])
+            phi = normalize_angle(np.arctan2(v_adjusted[1], v_adjusted[0]))
+            v_new = norm(rotate(v_adjusted), (phi - yaw))
+            w_new = (phi - yaw) * lib.CONTROL_FREQUENCY     # w = theta / dt
 
             self.velocity_control(linear_velocity=v_new, rotational_velocity=w_new)
 
