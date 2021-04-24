@@ -38,29 +38,19 @@ def function_test(pb, objects, object_states, robots, robot_fsms):
         robot_fsm.set_destination(targets[i])
         logging.debug("Moving to Cell {}...".format(cells[i]))
 
-        while True:
-            lib.cycle_robot(robot_fsm)
-            lib.step(pb, int(240 / CONTROL_FREQUENCY))
+        lib.cycle_robot(pb, robot_fsm)
+        lib.step(pb, 100)
 
-            if robot_fsm.current_state == "NONE":
-                lib.step(pb, 100)
+        m = controller.measure(robot, robot_fsm.obj_states, r=RADIUS, noise="GAUSSIAN")
+        actual = controller.measure(robot, robot_fsm.obj_states, r=RADIUS)
+        logging.debug("Robot measured {} objects (Actual = {}).".format(m, actual))
 
-                m = controller.measure(robot, robot_fsm.obj_states, r=RADIUS, noise="GAUSSIAN")
-                actual = controller.measure(robot, robot_fsm.obj_states, r=RADIUS)
-                logging.debug("Robot measured {} objects (Actual = {}).".format(m, actual))
+        lib.step(pb, 100)
 
-                lib.step(pb, 100)
+        robot_fsm.set_destination((0, 0))
+        logging.debug("Returning to Origin...")
 
-                robot_fsm.set_destination((0, 0))
-                logging.debug("Returning to Origin...")
-                while True:
-                    lib.cycle_robot(robot_fsm)
-
-                    lib.step(pb, int(240 / CONTROL_FREQUENCY))
-
-                    if robot_fsm.current_state == "NONE":
-                        break
-                break
+        lib.cycle_robot(pb, robot_fsm)
 
     # RETRIEVE ONE OBJECT FROM EACH MEASURED CELL
     targets = [4, 9, 14, 19]
@@ -69,21 +59,12 @@ def function_test(pb, objects, object_states, robots, robot_fsms):
 
         logging.debug("Retrieving object at {}...".format(controller.get_object_state(target)))
 
-        while True:
-            lib.cycle_robot(robot_fsm)
-            lib.step(pb, int(240 / CONTROL_FREQUENCY))
+        lib.cycle_robot(pb, robot_fsm)
 
-            if robot_fsm.current_state == "NONE":
-                # Only needed if utils.control.MAX_VOLUME is not 1
-                robot_fsm.set_destination((0, 0))
-                logging.debug("Returning to Origin...")
-                while True:
-                    lib.cycle_robot(robot_fsm)
-                    lib.step(pb, int(240 / CONTROL_FREQUENCY))
-
-                    if robot_fsm.current_state == "NONE":
-                        break
-                break
+        # Only needed if utils.control.MAX_VOLUME is not 1
+        robot_fsm.set_destination((0, 0))
+        logging.debug("Returning to Origin...")
+        lib.cycle_robot(pb, robot_fsm)
 
     lib.step(pb, 100)
 
@@ -124,30 +105,18 @@ def function_test_multi(pb, objects, object_states, robots, robot_fsms):
         logging.debug("Moving Robot {} to Cell {}...".format(robots[i], cells[i]))
 
     # MEASURE CELLS
-    while True:
-        for robot in robots:
-            lib.cycle_robot(robot_fsms[robot])
-        lib.step(pb, int(240 / CONTROL_FREQUENCY))
+    lib.cycle_robots(pb, robot_fsms)
+    for robot in robots:
+        robot_fsm = robot_fsms[robot]
+        m = controller.measure(robot, robot_fsm.obj_states, r=RADIUS, noise="GAUSSIAN")
+        actual = controller.measure(robot, robot_fsm.obj_states, r=RADIUS)
+        logging.debug("Robot {} measured {} objects (Actual = {}).".format(robot, m, actual))
 
-        if all(robot_fsms[robot].current_state == "NONE" for robot in robots):
-            for robot in robots:
-                robot_fsm = robot_fsms[robot]
-                m = controller.measure(robot, robot_fsm.obj_states, r=RADIUS, noise="GAUSSIAN")
-                actual = controller.measure(robot, robot_fsm.obj_states, r=RADIUS)
-                logging.debug("Robot {} measured {} objects (Actual = {}).".format(robot, m, actual))
-
-                robot_fsm.set_destination(robot_coords[robot - 1])
-                logging.debug("Robot {} returning to starting location...".format(robot))
-            break
+        robot_fsm.set_destination(robot_coords[robot - 1])
+        logging.debug("Robot {} returning to starting location...".format(robot))
 
     # RETURN TO START
-    while True:
-        for robot in robots:
-            lib.cycle_robot(robot_fsms[robot])
-        lib.step(pb, int(lib.SIM_FREQUENCY / lib.CONTROL_FREQUENCY))
-
-        if all(robot_fsms[robot].current_state == "NONE" for robot in robots):
-            break
+    lib.cycle_robots(pb, robot_fsms)
 
     # RETRIEVE OBJECTS
     targets = [7, 12, 17, 22]
@@ -155,25 +124,13 @@ def function_test_multi(pb, objects, object_states, robots, robot_fsms):
         robot_fsms[robots[i]].set_target(targets[i])
         logging.debug("Robot {} retrieving object {}...".format(robots[i], targets[i]))
 
-    while True:
-        for robot in robots:
-            lib.cycle_robot(robot_fsms[robot])
-        lib.step(pb, int(lib.SIM_FREQUENCY/lib.CONTROL_FREQUENCY))
-
-        if all(robot_fsms[robot].current_state == "NONE" for robot in robots):
-            for robot in robots:
-                robot_fsms[robot].set_destination(robot_coords[robot - 1])
-                logging.debug("Robot {} returning to starting location...".format(robot))
-            break
+    lib.cycle_robots(pb, robot_fsms)
 
     # RETURN TO START
-    while True:
-        for robot in robots:
-            lib.cycle_robot(robot_fsms[robot])
-        lib.step(pb, int(lib.SIM_FREQUENCY / lib.CONTROL_FREQUENCY))
-
-        if all(robot_fsms[robot].current_state == "NONE" for robot in robots):
-            break
+    for robot in robots:
+        robot_fsms[robot].set_destination(robot_coords[robot - 1])
+        logging.debug("Robot {} returning to starting location...".format(robot))
+    lib.cycle_robots(pb, robot_fsms)
 
     lib.step(pb, 100)
 
