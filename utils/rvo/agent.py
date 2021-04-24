@@ -3,6 +3,12 @@ from . import rvo_math
 
 from .line import Line
 from .vector import Vector2
+from .kdtree import KdTree
+
+
+def sort_agent_neighbors(neighbors, max_n):
+    neighbors.sort(key=lambda x: x[0])
+    return neighbors[0:max_n]
 
 
 class Agent:
@@ -11,7 +17,6 @@ class Agent:
     """
 
     def __init__(self, simulator):
-        self.simulator_ = simulator
         self.agent_neighbors_ = [] # (float, Agent)
         self.obstacle_neighbors_ = [] # (float, Obstacle)
         self.orca_lines_ = [] # Line
@@ -26,19 +31,21 @@ class Agent:
         self.time_horizon_ = 0.0
         self.time_horizon_obst_ = 0.0
         self.new_velocity_ = Vector2()
+        self.time_step_ = 0.01
 
-    def compute_neighbors(self):
-        """
-        Computes the neighbors of this agent.
-        """
-        rangeSq = rvo_math.square(self.time_horizon_obst_ * self.max_speed_ + self.radius_)
-        self.obstacle_neighbors_ = []
-        self.simulator_.kd_tree_.compute_obstacle_neighbors(self, rangeSq)
-
-        self.agent_neighbors_ = []
-        if self.max_neighbors_ > 0:
-            rangeSq = rvo_math.square(self.neighbor_dist_)
-            self.simulator_.kd_tree_.compute_agent_neighbors(self, rangeSq)
+    # def compute_neighbors(self):
+    #     """
+    #     Computes the neighbors of this agent.
+    #     """
+    #     rangeSq = rvo_math.square(self.time_horizon_obst_ * self.max_speed_ + self.radius_)
+    #     # No obstacles are present in this simulation
+    #     # self.obstacle_neighbors_ = []
+    #     # self.simulator_.kd_tree_.compute_obstacle_neighbors(self, rangeSq)
+    #
+    #     self.agent_neighbors_ = []
+    #     if self.max_neighbors_ > 0:
+    #         rangeSq = rvo_math.square(self.neighbor_dist_)
+    #         self.simulator_.kd_tree_.compute_agent_neighbors(self, rangeSq)
 
     def compute_new_velocity(self):
         """
@@ -268,7 +275,7 @@ class Agent:
                     u = dotProduct2 * line.direction - relativeVelocity
             else:
                 # Collision. Project on cut-off circle of time timeStep.
-                invTimeStep = 1.0 / self.simulator_.time_step_
+                invTimeStep = 1.0 / self.time_step_
 
                 # Vector from cutoff center to relative velocity.
                 w = relativeVelocity - invTimeStep * relativePosition
@@ -287,31 +294,26 @@ class Agent:
         if lineFail < len(self.orca_lines_):
             self.new_velocity_ = self.linear_program3(self.orca_lines_, numObstLines, lineFail, self.max_speed_, self.new_velocity_)
 
-    def insert_agent_neighbor(self, agent, rangeSq):
+    def insert_agent_neighbors(self, agents, rangeSq=None):
         """
         Inserts an agent neighbor into the set of neighbors of this agent.
          
         Args:
-            agent (Agent): A pointer to the agent to be inserted.
+            agents (float, Agent): A pointer to the agent to be inserted.
             rangeSq (float): The squared range around this agent.
         """
-        if self != agent:
-            distSq = rvo_math.abs_sq(self.position_ - agent.position_)
 
-            if distSq < rangeSq:
-                if len(self.agent_neighbors_) < self.max_neighbors_:
+        if rangeSq is None:
+            rangeSq = rvo_math.abs_sq(self.neighbor_dist_)
+
+        for agent in agents:
+            if self != agent:
+                distSq = rvo_math.abs_sq(self.position_ - agent.position_)
+
+                if distSq < rangeSq:
                     self.agent_neighbors_.append((distSq, agent))
 
-                i = len(self.agent_neighbors_) - 1
-                while i != 0 and distSq < self.agent_neighbors_[i - 1][0]:
-                    self.agent_neighbors_[i] = self.agent_neighbors_[i - 1]
-                    i -= 1
-
-                self.agent_neighbors_[i] = (distSq, agent)
-
-                if len(self.agent_neighbors_) == self.max_neighbors_:
-                    rangeSq = self.agent_neighbors_[len(self.agent_neighbors_) - 1][0]
-        return rangeSq
+        self.agent_neighbors_ = sort_agent_neighbors(self.agent_neighbors_, self.max_neighbors_)
 
     def insert_obstacle_neighbor(self, obstacle, rangeSq):
         """
@@ -340,7 +342,7 @@ class Agent:
         Updates the two-dimensional position and two-dimensional velocity of this agent.
         """
         self.velocity_ = self.new_velocity_
-        self.position_ += self.velocity_ * self.simulator_.time_step_
+        self.position_ += self.velocity_ * self.time_step_
 
     def linear_program1(self, lines, lineNo, radius, optVelocity, directionOpt):
         """
