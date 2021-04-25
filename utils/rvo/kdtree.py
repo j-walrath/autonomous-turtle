@@ -61,9 +61,9 @@ class KdTree:
     Defines k-D trees for agents and static obstacles in the simulation.
     """
 
-    def __init__(self, simulator):
-        self.simulator_ = simulator
-        self.agents_ = None
+    def __init__(self, agents, obstacles):
+        self.agents_ = agents
+        self.obstacles_ = obstacles
         self.agentTree_ = None
         self.obstacleTree_ = None
 
@@ -71,9 +71,9 @@ class KdTree:
         """
         Builds an agent k-D tree.
         """
-        if self.agents_ is None or len(self.agents_) != len(self.simulator_.agents_):
-            self.agents_ = list(self.simulator_.agents_)
-            self.agentTree_ = [AgentTreeNode() for i in range(2 * len(self.agents_))]
+        # if self.agents_ is None or len(self.agents_) != len(self.agents_):
+        #     self.agents_ = list(self.agents_)
+        self.agentTree_ = [AgentTreeNode() for i in range(2 * len(self.agents_))]
 
         if len(self.agents_) != 0:
             self.build_agent_tree_recursive(0, len(self.agents_), 0)
@@ -82,7 +82,7 @@ class KdTree:
         """
         Builds an obstacle k-D tree.
         """
-        obstacles = list(self.simulator_.obstacles_)
+        obstacles = list(self.obstacles_)
         self.obstacleTree_ = self.build_obstacle_treeRecursive(obstacles)
 
     def compute_agent_neighbors(self, agent, rangeSq):
@@ -253,9 +253,9 @@ class KdTree:
                 newObstacle.convex_ = True
                 newObstacle.direction_ = obstacleJ1.direction_
 
-                newObstacle.id_ = len(self.simulator_.obstacles_)
+                newObstacle.id_ = len(self.obstacles_)
 
-                self.simulator_.obstacles_.append(newObstacle)
+                self.obstacles_.append(newObstacle)
 
                 obstacleJ1.next_ = newObstacle
                 obstacleJ2.previous_ = newObstacle
