@@ -42,7 +42,7 @@ def ray_test(pb, objects, object_states, robots, robot_fsms):
     #     else:
     #         rayIds.append(-1)
 
-    length = 0.4
+    length = 0.25
     sideLength = length * 0.6
     height = 0.055
     factor = 1.5

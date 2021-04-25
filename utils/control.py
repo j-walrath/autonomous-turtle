@@ -35,7 +35,7 @@ def rotate(vector, angle):
     return np.around(np.dot(rotation_matrix(angle), vector))
 
 
-def get_effective_center(pose, D=0.2):
+def get_effective_center(pose, D=0.25):
     x, y, yaw = pose
     return x + D * np.cos(yaw), y + D * np.sin(yaw)
 
@@ -47,7 +47,7 @@ def get_wheel_velocity(v, w, L=0.288):
     return vl, vr
 
 
-def M(theta, D=0.2, L=0.288):
+def M(theta, D=0.25, L=0.288):
     c = np.cos(theta)
     s = np.sin(theta)
     return np.array([[c/2 + D*s/L, c/2 - D*s/L],
