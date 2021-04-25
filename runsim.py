@@ -97,7 +97,7 @@ def init_states(physClient):
         object_states[obj] = 'ON_GROUND'
 
     for robot in robots:
-        robot_fsms[robot] = RobotStateMachine(physClient, object_states, robot)
+        robot_fsms[robot] = RobotStateMachine(physClient, object_states, robot_fsms, robot)
 
 
 # RUN SIM

@@ -1,4 +1,5 @@
 import logging
+from typing import Dict, List
 from utils import simulator_library as lib
 from utils.control import RobotControl
 from utils import fsm
@@ -19,7 +20,8 @@ def in_cell(target, state):
 
 
 # SINGLE AGENT UCB TEST
-def ucb1_multi(pb, objects: list, object_states: dict, robots: list, robot_fsms: list):
+def ucb1_multi(pb, objects: List[int], object_states: Dict[int, str], robots: List[int],
+               robot_fsms: Dict[int, fsm.RobotStateMachine]):
     logging.info('Running Multi Agent UCB1...')
 
     # SIMULATION VARIABLES
@@ -42,7 +44,7 @@ def ucb1_multi(pb, objects: list, object_states: dict, robots: list, robot_fsms:
 
     regret = []
 
-    controller = RobotControl(pb)
+    controller = RobotControl(pb, robot_fsms)
 
     # INITIALIZE COMMUNICATION NETWORK
     for agent in range(K):
@@ -80,11 +82,11 @@ def ucb1_multi(pb, objects: list, object_states: dict, robots: list, robot_fsms:
     # LOAD OBJECTS AND ROBOTS
     coords = []
     for i in range(K):
-        coords.append([math.ceil(i / 2.) - 1, -1] if i & 1 else [-1, math.ceil(i / 2.) - 1])
+        coords.append([math.ceil(i / 2.)*3 - 2, -2] if i & 1 else [-2, math.ceil(i / 2.)*3 - 2])
 
     for robot in lib.load_robots(pb, coords):
         robots.append(robot)
-        robot_fsms[robot] = fsm.RobotStateMachine(pb, object_states, robot)
+        robot_fsms[robot] = fsm.RobotStateMachine(pb, object_states, robot_fsms, robot)
 
     object_locations = np.random.multivariate_normal(mu, sig, N)
 
@@ -99,6 +101,10 @@ def ucb1_multi(pb, objects: list, object_states: dict, robots: list, robot_fsms:
 
     logging.debug("Executing Simulation...")
 
+    # bot = robot_fsms[robots[0]]
+    # fsms = bot.control.robot_fsms
+    # logging.debug("{} is aware of fsms for {}".format(lib.NAMES[robots[0]-1],
+    #                                                   [lib.NAMES[bot_id - 1] for bot_id in fsms]))
     # INITIALIZE AGENT
     T = 0
     for agent in range(K):
@@ -134,9 +140,9 @@ def ucb1_multi(pb, objects: list, object_states: dict, robots: list, robot_fsms:
             target = np.unravel_index(np.argmax(Q), Q.shape)
 
             # Extra movement to avoid bumping into other robots
-            robot_fsms[robot].set_destination((5, 5))
-            lib.cycle_robot(pb, robot_fsms[robot])
-            lib.step(pb, 10)
+            # robot_fsms[robot].set_destination((5, 5))
+            # lib.cycle_robot(pb, robot_fsms[robot])
+            # lib.step(pb, 10)
 
             # Make measurement
             robot_fsms[robot].set_destination(lib.get_cell_coordinates(target[0], target[1]))
@@ -148,8 +154,8 @@ def ucb1_multi(pb, objects: list, object_states: dict, robots: list, robot_fsms:
 
             # Calculate regret
             max_reward = field[np.unravel_index(np.argmax(field), field.shape)] # based off optimal target
-            reward = field[target]
-            regret[agent].append(max_reward - reward)
+            actual_reward = field[target]
+            regret[agent].append(max_reward - actual_reward)
 
             # Message neighbors
             msg = (T, agent, target, measurement)
@@ -159,14 +165,29 @@ def ucb1_multi(pb, objects: list, object_states: dict, robots: list, robot_fsms:
             tx.append(msg)
             msgTx[agent] = tx
 
-            # Pickup object (TODO: Gargi said this is indeed not in the right place.)
+            # Return
+            robot_fsms[robot].set_destination(coords[agent])
+            lib.cycle_robot(pb, robot_fsms[robot])
+
+        for agent in range(K):
+            robot = robots[agent]
+
+            # Go to target
+            Q = exp_mean[agent] + var * np.divide(math.sqrt(2 * (xi + 1) * math.log(T)), np.sqrt(visits[agent]))
+            target = np.unravel_index(np.argmax(Q), Q.shape)
+            robot_fsms[robot].set_destination(lib.get_cell_coordinates(target[0], target[1]))
+            lib.cycle_robot(pb, robot_fsms[robot])
+
+            # Pickup object
             for obj in objects:
                 if object_states[obj] == "ON_GROUND" and in_cell(target, controller.get_object_state(obj)):
                     robot_fsms[robot].set_target(obj)
                     break
             lib.cycle_robot(pb, robot_fsms[robot])
 
-            # TODO: do the field decrement thing
+            # Decrement field
+            if field[target] > 0:
+                field[target] -= 1
 
             # Return to start location
             robot_fsms[robot].set_destination(coords[agent])

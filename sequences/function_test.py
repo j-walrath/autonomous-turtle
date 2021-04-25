@@ -76,12 +76,13 @@ def function_test(pb, objects, object_states, robots, robot_fsms):
 def function_test_multi(pb, objects, object_states, robots, robot_fsms):
     logging.info('Running Multi-Robot Functions Test...')
 
-    controller = RobotControl(pb)
+    controller = RobotControl(pb, robot_fsms)
 
     robot_coords = [(1, 1), (1, -1), (-1, -1), (-1, 1)]
     for robot in lib.load_robots(pb, robot_coords):
         robots.append(robot)
-        robot_fsms[robot] = RobotStateMachine(pb, object_states, robot, max_linear_v=utils.control.MAX_LINEAR_V)
+        robot_fsms[robot] = RobotStateMachine(pb, object_states, robot_fsms, robot,
+                                              max_linear_v=utils.control.MAX_LINEAR_V)
 
     logging.debug('Loaded robots...')
 
