@@ -8,7 +8,7 @@ import numpy as np
 
 
 def ray_test(pb, objects, object_states, robots, robot_fsms):
-    controller = RobotControl(pb, max_linear_velocity=5)
+    controller = RobotControl(pb, robot_fsms, max_linear_velocity=5)
     # p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
     # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING,0)
     pb.resetDebugVisualizerCamera(2, 0, -89, [0, 0, 0])
@@ -42,7 +42,7 @@ def ray_test(pb, objects, object_states, robots, robot_fsms):
     #     else:
     #         rayIds.append(-1)
 
-    length = 4.0
+    length = 0.3
     sideLength = length * 0.6
     height = 0.055
     factor = 1.5
@@ -55,7 +55,7 @@ def ray_test(pb, objects, object_states, robots, robot_fsms):
     else:
         rayIds.append(-1)
 
-    for i in np.linspace(0, 2*np.pi, 100):
+    for i in np.linspace(np.pi/4, 2*np.pi - np.pi/4, 7):
         rayFrom.append(rayFrom[-1])
         rayTo.append([rayFrom[-1][0] + length * np.cos(yaw+i), rayFrom[-1][1] + length * np.sin(yaw+i), height])
 
