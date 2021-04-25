@@ -12,28 +12,6 @@ MAX_LINEAR_V = 3.5
 MIN_LINEAR_V = -1.5
 MAX_ANGULAR_V = 3.0
 MIN_ANGULAR_V = -3.0
-RADIUS = 0.20
-
-
-def normalize_angle(theta):
-    if theta > np.pi:
-        theta -= 2 * np.pi
-    elif theta <= -np.pi:
-        theta += 2 * np.pi
-
-    return theta
-
-
-def get_effective_center(pose, D=RADIUS):
-    x, y, yaw = pose
-    return x + D * np.cos(yaw), y + D * np.sin(yaw)
-
-
-def M(theta, D=RADIUS):
-    c = np.cos(theta)
-    s = np.sin(theta)
-    return np.array([[c, -D*s],
-                     [s, D*c]])
 
 
 def curvature(r, theta, delta):
@@ -183,7 +161,7 @@ class RobotControl:
         theta = 0
 
         # orientation of robot w.r.t. line of sight (-pi, pi]
-        delta = normalize_angle(yaw - np.arctan2(r[1], r[0]))
+        delta = lib.normalize_angle(yaw - np.arctan2(r[1], r[0]))
 
         k = curvature(norm(r), theta, delta)
         v = compute_v(k, self.max_linear_velocity)
@@ -191,9 +169,9 @@ class RobotControl:
 
         return v, w
 
+    # Integration of pose controller with DD-ORCA
     def smart_pose_control(self, robot_id, destination):
         pose, v_current = self.get_robot_state(robot_id)
-        yaw = pose[2]
         v, w = self.pose_control(robot_id, destination)
 
         # rays_from, rays_to = get_rays(pose, 5.0, 0.055)
@@ -210,51 +188,36 @@ class RobotControl:
                     moving_robots.append(ID)
 
         if not (moving_robots or obstacle_robots):
+            # No collision avoidance necessary if there is only one robot on the field.
             self.velocity_control(robot_id, linear_velocity=v, rotational_velocity=w)
             return v, w
         else:
-
             # Compute agent p, v_eff, v_pref
-            p = get_effective_center(pose)
-            v_eff = np.dot(M(yaw), (norm(v_current[0:2]), v_current[2]))
-            v_pref = np.dot(M(yaw), (v, w))
-            agent = lib.get_agent(robot_id, pose=p, v=v_eff)
+            agent = lib.get_agent(robot_id, pose=pose, v=v_current)
+            agent.pref_velocity_ = lib.get_vec(lib.convert_v(pose, v, w))
 
             # Compute p, v_eff for all neighbors
             other_agents = []
             for other_robot in moving_robots:
                 agent_pose, agent_v = self.get_robot_state(other_robot)
-                agent_p = get_effective_center(agent_pose)
-                agent_v_eff = np.dot(M(pose[2]), (norm(agent_v[0:2]), agent_v[2]))
-                other_agents.append(lib.get_agent(other_robot, agent_p, agent_v_eff))
+                other_agents.append(lib.get_agent(other_robot, agent_pose, agent_v))
 
-            # Add non-moving (state-wise) robots to the obstacle list.
-            obstacle_vertices = []
-            for obstacle in obstacle_robots:
-                r = 0.3
-                (x_, y_, theta), _ = self.get_robot_state(obstacle)
-                obstacle_vertices.append([[x_ + r*np.cos(theta + np.pi/4), y_ + r*np.sin(theta + np.pi/4)],
-                                          [x_ + r*np.cos(theta + 3*np.pi/4), y_ + r*np.sin(theta + 3*np.pi/4)],
-                                          [x_ + r*np.cos(theta + 5*np.pi/4), y_ + r*np.sin(theta + 5*np.pi/4)],
-                                          [x_ + r*np.cos(theta + 7*np.pi/4), y_ + r*np.sin(theta + 7*np.pi/4)]])
-            obstacles = lib.get_obstacle_list(obstacle_vertices)
+            # Add non-moving robots to the obstacle list.
+            obstacles = lib.get_obstacle_list([self.get_robot_state(obstacle)[0] for obstacle in obstacle_robots])
 
-            # Build KD Trees
-            kd_tree = KdTree(agents=other_agents + [agent], obstacles=obstacles)
-            kd_tree.build_agent_tree()
-            kd_tree.build_obstacle_tree()
-            agent.kd_tree_ = kd_tree
+            # Build KD Trees for agents and obstacles
+            agent.kd_tree_ = lib.build_trees(other_agents + [agent], obstacles)
 
-            # Get adjusted velocity from ORCA given v_pref
-            agent.pref_velocity_ = lib.get_vec(v_pref)
+            # Use ORCA to compute adjusted velocity
             agent.compute_neighbors()
             agent.compute_new_velocity()
 
-            # Convert adjusted velocity into actual v, w control inputs
-            v_new, w_new = np.linalg.solve(M(yaw), (agent.new_velocity_.x, agent.new_velocity_.y))
+            # Convert velocity from effective center to control inputs v, w
+            v_new, w_new = lib.revert_v(pose, agent.new_velocity_.x, agent.new_velocity_.y)
 
-            # v_f = saturate(v_f, MIN_LINEAR_V, MAX_LINEAR_V)
-            # w_f = saturate(w_f, MIN_ANGULAR_V, MAX_ANGULAR_V)
+            # Use if v, w are consistently exceeding bounds
+            # v_new = saturate(v_new, MIN_LINEAR_V, MAX_LINEAR_V)
+            # w_new = saturate(w_new, MIN_ANGULAR_V, MAX_ANGULAR_V)
             self.velocity_control(robot_id, v_new, w_new)
 
         return v_new, w_new
