@@ -159,12 +159,14 @@ def ucb1_multi(pb, objects: list, object_states: dict, robots: list, robot_fsms:
             tx.append(msg)
             msgTx[agent] = tx
 
-            # Pickup object (TODO: Check with Gargi that this is in the right place.)
+            # Pickup object (TODO: Gargi said this is indeed not in the right place.)
             for obj in objects:
                 if object_states[obj] == "ON_GROUND" and in_cell(target, controller.get_object_state(obj)):
                     robot_fsms[robot].set_target(obj)
                     break
             lib.cycle_robot(pb, robot_fsms[robot])
+
+            # TODO: do the field decrement thing
 
             # Return to start location
             robot_fsms[robot].set_destination(coords[agent])
