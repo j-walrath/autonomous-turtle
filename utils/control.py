@@ -11,6 +11,7 @@ import pybullet as pb
 DEG_TO_RAD = np.pi / 180
 MAX_LINEAR_V = 3.5
 MAX_ANGULAR_V = 3.0
+RADIUS = 0.25
 
 
 def rotation_matrix(theta):
@@ -35,7 +36,7 @@ def rotate(vector, angle):
     return np.around(np.dot(rotation_matrix(angle), vector))
 
 
-def get_effective_center(pose, D=0.25):
+def get_effective_center(pose, D=RADIUS):
     x, y, yaw = pose
     return x + D * np.cos(yaw), y + D * np.sin(yaw)
 
@@ -47,7 +48,7 @@ def get_wheel_velocity(v, w, L=0.288):
     return vl, vr
 
 
-def M(theta, D=0.25, L=0.288):
+def M(theta, D=RADIUS, L=0.288):
     c = np.cos(theta)
     s = np.sin(theta)
     return np.array([[c/2 + D*s/L, c/2 - D*s/L],
@@ -217,6 +218,36 @@ class RobotControl:
                                              force=500,
                                              velocityGain=gain_v)
 
+    def velocity_control2(self, robot_id, vl, vr, r=0.033, gain=0.9):
+        v_left = vl/r
+        v_right = vr/r
+
+        self.pb_client.setJointMotorControl2(bodyUniqueId=robot_id,
+                                             jointIndex=0,
+                                             controlMode=pb.VELOCITY_CONTROL,
+                                             targetVelocity=v_left,
+                                             force=500,
+                                             velocityGain=gain)
+        self.pb_client.setJointMotorControl2(bodyUniqueId=robot_id,
+                                             jointIndex=1,
+                                             controlMode=pb.VELOCITY_CONTROL,
+                                             targetVelocity=v_right,
+                                             force=500,
+                                             velocityGain=gain)
+
+        self.pb_client.setJointMotorControl2(bodyUniqueId=robot_id,
+                                             jointIndex=2,
+                                             controlMode=pb.VELOCITY_CONTROL,
+                                             targetVelocity=v_left,
+                                             force=500,
+                                             velocityGain=gain)
+        self.pb_client.setJointMotorControl2(bodyUniqueId=robot_id,
+                                             jointIndex=3,
+                                             controlMode=pb.VELOCITY_CONTROL,
+                                             targetVelocity=v_right,
+                                             force=500,
+                                             velocityGain=gain)
+
     def get_closest_point(self, robot1_id, robot2_id, robot1_pose, distance):
         closest_points = self.pb_client.getClosestPoints(bodyA=robot1_id, bodyB=robot2_id, distance=distance)
 
@@ -266,35 +297,31 @@ class RobotControl:
             self.velocity_control(robot_id, linear_velocity=v, rotational_velocity=w)
             return v, w
         else:
-            logging.debug('{} is moving around neighbors with IDs: {}'.format(robot_id, neighbors))
+            logging.debug('{} is moving around neighbors: {}'.format(lib.NAMES[robot_id],
+                                                                     [lib.NAMES[neighbor] for neighbor in neighbors]))
+
+            # Compute agent p, v_eff, v_pref
+            p = get_effective_center(pose)
+            v_eff = np.dot(M(yaw), get_wheel_velocity(norm(v_current[0:2]), v_current[2]))
+            v_pref = np.dot(M(yaw), get_wheel_velocity(v, w))
+            agent = lib.get_agent(robot_id, pose=p, v=v_eff)
+
+            # Compute p, v_eff for all neighbors
             agent_neighbors = []
             for neighbor in neighbors:
                 neighbor_pose, neighbor_v = self.get_robot_state(neighbor)
-                agent_neighbors.append(lib.get_agent(neighbor, neighbor_pose[0:2], neighbor_v[0:2]))
-
-            agent = lib.get_agent(robot_id, pose=pose[0:2], v=v_current[0:2])
+                neighbor_p = get_effective_center(neighbor_pose)
+                neighbor_v_eff = np.dot(M(pose[2]), get_wheel_velocity(norm(neighbor_v[0:2]), neighbor_v[2]))
+                agent_neighbors.append(lib.get_agent(neighbor, neighbor_p, neighbor_v_eff))
             agent.insert_agent_neighbors(agent_neighbors)
-
-            # Convert desired control inputs v, w into preferred velocity vector v_pref
-            vec_v = np.array([v * np.cos(yaw), v * np.sin(yaw)])
-            theta = w * 1 / lib.CONTROL_FREQUENCY   # theta = w * dt
-            v_pref = rotate(vec_v, theta)
 
             # Get adjusted velocity from ORCA given v_pref
             agent.pref_velocity_ = lib.get_vec(v_pref)
             agent.compute_new_velocity()
 
             # Convert adjusted velocity into actual v, w control inputs
-            v_adjusted = np.array([agent.new_velocity_.x, agent.new_velocity_.y])
-            phi = normalize_angle(np.arctan2(v_adjusted[1], v_adjusted[0]))
-            v_new = norm(rotate(v_adjusted, (phi - yaw)))
-            w_new = (phi - yaw) * lib.CONTROL_FREQUENCY     # w = theta / dt
-
-            # if w_new > MAX_ANGULAR_V:
-            #     v_new = 0
-            #     w_new = MAX_ANGULAR_V
-
-            self.velocity_control(robot_id, linear_velocity=v_new, rotational_velocity=w_new)
+            v_new = np.linalg.solve(M(yaw), (agent.new_velocity_.x, agent.new_velocity_.y))
+            self.velocity_control2(robot_id, v_new[0], v_new[1])
 
         return v, w
 
