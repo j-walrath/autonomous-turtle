@@ -1,13 +1,11 @@
+from math import floor
 import numpy as np
 from numpy.linalg import norm
-from math import floor
-import logging
+import pybullet as pb
 from utils import simulator_library as lib
 from utils.rvo.kdtree import KdTree
-# from utils.fsm import RobotStateMachine
-from typing import Dict
+import logging
 
-import pybullet as pb
 
 DEG_TO_RAD = np.pi / 180
 MAX_LINEAR_V = 3.5
@@ -15,15 +13,6 @@ MIN_LINEAR_V = -1.5
 MAX_ANGULAR_V = 3.0
 MIN_ANGULAR_V = -3.0
 RADIUS = 0.20
-
-
-def rotation_matrix(theta):
-    return np.array([[np.cos(theta), -np.sin(theta)],
-                     [np.sin(theta), np.cos(theta)]])
-
-
-def normalize_vector(v):
-    return v / norm(v)
 
 
 def normalize_angle(theta):
@@ -35,38 +24,14 @@ def normalize_angle(theta):
     return theta
 
 
-def rotate(vector, angle):
-    return np.around(np.dot(rotation_matrix(angle), vector))
-
-
 def get_effective_center(pose, D=RADIUS):
     x, y, yaw = pose
     return x + D * np.cos(yaw), y + D * np.sin(yaw)
 
 
-# def get_wheel_velocity(v, w, L=0.288):
-#     vl = v - (w * L / 2)
-#     vr = v + (w * L / 2)
-#
-#     return vl, vr
-#
-#
-# def convert_wheel_velocity(vl, vr, L=0.288):
-#     v = (vl + vr) / 2
-#     w = (vr - vl) / L
-#
-#     return v, w
-
-
-def saturate(x, min_val, max_val):
-    return max(min_val, min(x, max_val))
-
-
-def M(theta, D=RADIUS, L=0.288):
+def M(theta, D=RADIUS):
     c = np.cos(theta)
     s = np.sin(theta)
-    # return np.array([[c / 2 + D * s / L, c / 2 - D * s / L],
-    #                  [s / 2 - D * c / L, s / 2 + D * c / L]])
     return np.array([[c, -D*s],
                      [s, D*c]])
 
@@ -91,59 +56,27 @@ def compute_v(k, vmax):
     return vmax / (1 + (beta * abs(k) ** gamma))
 
 
-def get_rays(pose, length, height):
-    (x, y, yaw) = pose
-    sideLength = length * 0.6
-    factor = 1.5
-    rayFrom = []
-    rayTo = []
-
-    rayFrom.append([x * np.cos(yaw), y * np.sin(yaw), height])
-    rayTo.append([rayFrom[0][0] + length * np.cos(yaw), rayFrom[0][1] + length * np.sin(yaw), height])
-
-    for i in np.linspace(0, 2 * np.pi, 100):
-        rayFrom.append(rayFrom[-1])
-        rayTo.append([rayFrom[-1][0] + length * np.cos(yaw + i), rayFrom[-1][1] + length * np.sin(yaw + i), height])
-
-    # rayFrom.append([x + 0.15 * np.cos(yaw), y + 0.15 * np.sin(yaw), height])
-    # rayTo.append([rayFrom[0][0] + length * np.cos(yaw), rayFrom[0][1] + length * np.sin(yaw), height])
-    #
-    # for i in np.linspace(0.02, 0.11, 6):
-    #     dx = i / length * (rayFrom[0][1] - rayTo[0][1])
-    #     dy = i / length * (rayFrom[0][0] - rayTo[0][0])
-    #     rayFrom.append([rayFrom[0][0] + dx, rayFrom[0][1] + dy, height])
-    #     # rayTo.append([rayTo[0][0] + dx, rayTo[0][1] + dy, height])
-    #     rayTo.append(
-    #         [rayFrom[-1][0] + length * np.cos(yaw - (factor * i)), rayFrom[-1][1] + length * np.sin(yaw - (factor * i)),
-    #          height])
-    #
-    # for i in np.linspace(3*np.pi/4, 0, 15, endpoint=False):
-    #     rayFrom.append(rayFrom[6])
-    #     rayTo.append(
-    #         [rayFrom[6][0] + sideLength * np.cos(yaw + i), rayFrom[6][1] + sideLength * np.sin(yaw + i), height])
-    #
-    # for i in np.linspace(-0.02, -0.11, 6):
-    #     dx = i / length * (rayFrom[0][1] - rayTo[0][1])
-    #     dy = i / length * (rayFrom[0][0] - rayTo[0][0])
-    #     rayFrom.append([rayFrom[0][0] + dx, rayFrom[0][1] + dy, height])
-    #     # rayTo.append([rayTo[0][0] + dx, rayTo[0][1] + dy, height])
-    #     rayTo.append(
-    #         [rayFrom[-1][0] + length * np.cos(yaw - (factor * i)), rayFrom[-1][1] + length * np.sin(yaw - (factor * i)),
-    #          height])
-    #
-    # for i in np.linspace(3*np.pi/4, 0, 15, endpoint=False):
-    #     rayFrom.append(rayFrom[-1])
-    #     rayTo.append(
-    #         [rayFrom[-1][0] + sideLength * np.cos(yaw + i), rayFrom[-1][1] + sideLength * np.sin(yaw + i), height])
-
-    return rayFrom, rayTo
+# def get_rays(pose, length, height):
+#     (x, y, yaw) = pose
+#     sideLength = length * 0.6
+#     factor = 1.5
+#     rayFrom = []
+#     rayTo = []
+#
+#     rayFrom.append([x * np.cos(yaw), y * np.sin(yaw), height])
+#     rayTo.append([rayFrom[0][0] + length * np.cos(yaw), rayFrom[0][1] + length * np.sin(yaw), height])
+#
+#     for i in np.linspace(0, 2 * np.pi, 100):
+#         rayFrom.append(rayFrom[-1])
+#         rayTo.append([rayFrom[-1][0] + length * np.cos(yaw + i), rayFrom[-1][1] + length * np.sin(yaw + i), height])
+#
+#     return rayFrom, rayTo
 
 
 class RobotControl:
     minimum_linear_velocity = 0
     critical_distance = .5
     activation_threshold = 15 * DEG_TO_RAD
-    # object_distance_offset = 0.16428811071136287
     object_distance_offset = 0.3
 
     def __init__(self, pb_client, robot_fsms, max_linear_velocity=MAX_LINEAR_V,
@@ -210,10 +143,6 @@ class RobotControl:
         self.manipulator_control(robot_id, arm_target_state)
 
     def velocity_control(self, robot_id, linear_velocity, rotational_velocity, r=0.033, gain_v=0.1):
-        # vl, vr = get_wheel_velocity(linear_velocity, rotational_velocity)
-        # left_wheel_velocity = vl / r
-        # right_wheel_velocity = vr / r
-
         left_wheel_velocity = linear_velocity / r - rotational_velocity * 0.027135999999999997 / (.144 * r)
         right_wheel_velocity = linear_velocity / r + rotational_velocity * 0.027135999999999997 / (.144 * r)
 
@@ -242,18 +171,6 @@ class RobotControl:
                                              targetVelocity=right_wheel_velocity,
                                              force=500,
                                              velocityGain=gain_v)
-
-    def get_closest_point(self, robot1_id, robot2_id, robot1_pose, distance):
-        closest_points = self.pb_client.getClosestPoints(bodyA=robot1_id, bodyB=robot2_id, distance=distance)
-
-        distances_to_points = [norm((point[5][0] - point[6][0], point[5][1] - point[6][1]))
-                               for point in closest_points if point[3] not in [0, 1] and point[4] not in [0, 1]]
-
-        if len(distances_to_points) == 0:
-            return []
-
-        closest_point_index = np.argmin(distances_to_points)
-        return closest_points[closest_point_index][6]
 
     def pose_control(self, robot_id, destination):
         pose, v_current = self.get_robot_state(robot_id=robot_id)
@@ -296,8 +213,6 @@ class RobotControl:
             self.velocity_control(robot_id, linear_velocity=v, rotational_velocity=w)
             return v, w
         else:
-            # logging.debug('{} is moving around neighbors: {}'.format(lib.NAMES[robot_id],
-            #                                                        [lib.NAMES[neighbor-1] for neighbor in neighbors]))
 
             # Compute agent p, v_eff, v_pref
             p = get_effective_center(pose)
