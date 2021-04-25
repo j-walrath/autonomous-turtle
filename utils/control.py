@@ -35,6 +35,25 @@ def rotate(vector, angle):
     return np.around(np.dot(rotation_matrix(angle), vector))
 
 
+def get_effective_center(pose, D=0.2):
+    x, y, yaw = pose
+    return x + D * np.cos(yaw), y + D * np.sin(yaw)
+
+
+def get_wheel_velocity(v, w, L=0.288):
+    vl = v - (w * L / 2)
+    vr = v + (w * L / 2)
+
+    return vl, vr
+
+
+def M(theta, D=0.2, L=0.288):
+    c = np.cos(theta)
+    s = np.sin(theta)
+    return np.array([[c/2 + D*s/L, c/2 - D*s/L],
+                     [s/2 - D*c/L, s/2 + D*c/L]])
+
+
 def curvature(r, theta, delta):
     # ratio of rate of change in theta to the rate of change in r
     k1 = 1.0
@@ -164,35 +183,39 @@ class RobotControl:
 
         self.manipulator_control(robot_id, arm_target_state)
 
-    def velocity_control(self, robot_id, linear_velocity, rotational_velocity):
-        left_wheel_velocity = linear_velocity / 0.033 - rotational_velocity * 0.027135999999999997 / (.144 * .033)
-        right_wheel_velocity = linear_velocity / 0.033 + rotational_velocity * 0.027135999999999997 / (.144 * .033)
+    def velocity_control(self, robot_id, linear_velocity, rotational_velocity, r=0.033, gain_v=0.9):
+        vl, vr = get_wheel_velocity(linear_velocity, rotational_velocity)
+        left_wheel_velocity = vl / r
+        right_wheel_velocity = vr / r
+
+        # left_wheel_velocity = linear_velocity / 0.033 - rotational_velocity * 0.027135999999999997 / (.144 * .033)
+        # right_wheel_velocity = linear_velocity / 0.033 + rotational_velocity * 0.027135999999999997 / (.144 * .033)
 
         self.pb_client.setJointMotorControl2(bodyUniqueId=robot_id,
                                              jointIndex=0,
                                              controlMode=pb.VELOCITY_CONTROL,
                                              targetVelocity=left_wheel_velocity,
                                              force=500,
-                                             velocityGain=.1)
+                                             velocityGain=gain_v)
         self.pb_client.setJointMotorControl2(bodyUniqueId=robot_id,
                                              jointIndex=1,
                                              controlMode=pb.VELOCITY_CONTROL,
                                              targetVelocity=right_wheel_velocity,
                                              force=500,
-                                             velocityGain=.1)
+                                             velocityGain=gain_v)
 
         self.pb_client.setJointMotorControl2(bodyUniqueId=robot_id,
                                              jointIndex=2,
                                              controlMode=pb.VELOCITY_CONTROL,
                                              targetVelocity=left_wheel_velocity,
                                              force=500,
-                                             velocityGain=.1)
+                                             velocityGain=gain_v)
         self.pb_client.setJointMotorControl2(bodyUniqueId=robot_id,
                                              jointIndex=3,
                                              controlMode=pb.VELOCITY_CONTROL,
                                              targetVelocity=right_wheel_velocity,
                                              force=500,
-                                             velocityGain=.1)
+                                             velocityGain=gain_v)
 
     def get_closest_point(self, robot1_id, robot2_id, robot1_pose, distance):
         closest_points = self.pb_client.getClosestPoints(bodyA=robot1_id, bodyB=robot2_id, distance=distance)
