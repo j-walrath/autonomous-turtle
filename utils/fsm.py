@@ -39,6 +39,7 @@ class ManipulatorStateMachine:
         self.target_state = np.array([0, 0, 0, 0])
 
     def release(self, manipulator_state):
+        self.pb.setCollisionFilterGroupMask(self.object, -1, 1, 1)
         self.pb.removeConstraint(self.constraint)
         self.object = None
         self.constraint = None
@@ -47,7 +48,6 @@ class ManipulatorStateMachine:
         return "ORIGIN"
 
     def grab(self, manipulator_state):
-        self.pb.setCollisionFilterGroupMask(self.object, -1, 1, 1)
         self.constraint = self.pb.createConstraint(parentBodyUniqueId=self.robot,
                                                    parentLinkIndex=10,
                                                    childBodyUniqueId=self.object,
