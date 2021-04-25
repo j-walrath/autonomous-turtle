@@ -1,10 +1,11 @@
 import numpy as np
 from numpy.linalg import norm
-from scipy.linalg import logm
 from math import floor
-from utils.rvo.agent import Agent
 import logging
 from utils import simulator_library as lib
+from utils.rvo.kdtree import KdTree
+# from utils.fsm import RobotStateMachine
+from typing import Dict
 
 import pybullet as pb
 
@@ -13,7 +14,7 @@ MAX_LINEAR_V = 3.5
 MIN_LINEAR_V = -1.5
 MAX_ANGULAR_V = 3.0
 MIN_ANGULAR_V = -3.0
-RADIUS = 0.25
+RADIUS = 0.20
 
 
 def rotation_matrix(theta):
@@ -51,8 +52,8 @@ def get_wheel_velocity(v, w, L=0.288):
 
 
 def convert_wheel_velocity(vl, vr, L=0.288):
-    v = (vl + vr)/2
-    w = (vr - vl)/L
+    v = (vl + vr) / 2
+    w = (vr - vl) / L
 
     return v, w
 
@@ -64,8 +65,8 @@ def saturate(x, min_val, max_val):
 def M(theta, D=RADIUS, L=0.288):
     c = np.cos(theta)
     s = np.sin(theta)
-    return np.array([[c/2 + D*s/L, c/2 - D*s/L],
-                     [s/2 - D*c/L, s/2 + D*c/L]])
+    return np.array([[c / 2 + D * s / L, c / 2 - D * s / L],
+                     [s / 2 - D * c / L, s / 2 + D * c / L]])
 
 
 def curvature(r, theta, delta):
@@ -75,7 +76,7 @@ def curvature(r, theta, delta):
     # timescale factor between fast subsystem and slow manifold
     k2 = 10
 
-    return -(1/r)*(k2*(delta-np.arctan(-k1*theta)) + (1 + k1/(1+(k1*theta)**2))*np.sin(delta))
+    return -(1 / r) * (k2 * (delta - np.arctan(-k1 * theta)) + (1 + k1 / (1 + (k1 * theta) ** 2)) * np.sin(delta))
 
 
 def compute_v(k, vmax):
@@ -85,7 +86,7 @@ def compute_v(k, vmax):
     # higher gamma = sharper peak for v/vmax vs k curve
     gamma = 1
 
-    return vmax / (1 + (beta*abs(k)**gamma))
+    return vmax / (1 + (beta * abs(k) ** gamma))
 
 
 def get_rays(pose, length, height):
@@ -95,36 +96,43 @@ def get_rays(pose, length, height):
     rayFrom = []
     rayTo = []
 
-    rayFrom.append([x + 0.15 * np.cos(yaw), y + 0.15 * np.sin(yaw), height])
+    rayFrom.append([x * np.cos(yaw), y * np.sin(yaw), height])
     rayTo.append([rayFrom[0][0] + length * np.cos(yaw), rayFrom[0][1] + length * np.sin(yaw), height])
 
-    for i in np.linspace(0.02, 0.11, 6):
-        dx = i / length * (rayFrom[0][1] - rayTo[0][1])
-        dy = i / length * (rayFrom[0][0] - rayTo[0][0])
-        rayFrom.append([rayFrom[0][0] + dx, rayFrom[0][1] + dy, height])
-        # rayTo.append([rayTo[0][0] + dx, rayTo[0][1] + dy, height])
-        rayTo.append(
-            [rayFrom[-1][0] + length * np.cos(yaw - (factor * i)), rayFrom[-1][1] + length * np.sin(yaw - (factor * i)),
-             height])
-
-    for i in np.linspace(3*np.pi/4, 0, 15, endpoint=False):
-        rayFrom.append(rayFrom[6])
-        rayTo.append(
-            [rayFrom[6][0] + sideLength * np.cos(yaw + i), rayFrom[6][1] + sideLength * np.sin(yaw + i), height])
-
-    for i in np.linspace(-0.02, -0.11, 6):
-        dx = i / length * (rayFrom[0][1] - rayTo[0][1])
-        dy = i / length * (rayFrom[0][0] - rayTo[0][0])
-        rayFrom.append([rayFrom[0][0] + dx, rayFrom[0][1] + dy, height])
-        # rayTo.append([rayTo[0][0] + dx, rayTo[0][1] + dy, height])
-        rayTo.append(
-            [rayFrom[-1][0] + length * np.cos(yaw - (factor * i)), rayFrom[-1][1] + length * np.sin(yaw - (factor * i)),
-             height])
-
-    for i in np.linspace(3*np.pi/4, 0, 15, endpoint=False):
+    for i in np.linspace(0, 2 * np.pi, 100):
         rayFrom.append(rayFrom[-1])
-        rayTo.append(
-            [rayFrom[-1][0] + sideLength * np.cos(yaw + i), rayFrom[-1][1] + sideLength * np.sin(yaw + i), height])
+        rayTo.append([rayFrom[-1][0] + length * np.cos(yaw + i), rayFrom[-1][1] + length * np.sin(yaw + i), height])
+
+    # rayFrom.append([x + 0.15 * np.cos(yaw), y + 0.15 * np.sin(yaw), height])
+    # rayTo.append([rayFrom[0][0] + length * np.cos(yaw), rayFrom[0][1] + length * np.sin(yaw), height])
+    #
+    # for i in np.linspace(0.02, 0.11, 6):
+    #     dx = i / length * (rayFrom[0][1] - rayTo[0][1])
+    #     dy = i / length * (rayFrom[0][0] - rayTo[0][0])
+    #     rayFrom.append([rayFrom[0][0] + dx, rayFrom[0][1] + dy, height])
+    #     # rayTo.append([rayTo[0][0] + dx, rayTo[0][1] + dy, height])
+    #     rayTo.append(
+    #         [rayFrom[-1][0] + length * np.cos(yaw - (factor * i)), rayFrom[-1][1] + length * np.sin(yaw - (factor * i)),
+    #          height])
+    #
+    # for i in np.linspace(3*np.pi/4, 0, 15, endpoint=False):
+    #     rayFrom.append(rayFrom[6])
+    #     rayTo.append(
+    #         [rayFrom[6][0] + sideLength * np.cos(yaw + i), rayFrom[6][1] + sideLength * np.sin(yaw + i), height])
+    #
+    # for i in np.linspace(-0.02, -0.11, 6):
+    #     dx = i / length * (rayFrom[0][1] - rayTo[0][1])
+    #     dy = i / length * (rayFrom[0][0] - rayTo[0][0])
+    #     rayFrom.append([rayFrom[0][0] + dx, rayFrom[0][1] + dy, height])
+    #     # rayTo.append([rayTo[0][0] + dx, rayTo[0][1] + dy, height])
+    #     rayTo.append(
+    #         [rayFrom[-1][0] + length * np.cos(yaw - (factor * i)), rayFrom[-1][1] + length * np.sin(yaw - (factor * i)),
+    #          height])
+    #
+    # for i in np.linspace(3*np.pi/4, 0, 15, endpoint=False):
+    #     rayFrom.append(rayFrom[-1])
+    #     rayTo.append(
+    #         [rayFrom[-1][0] + sideLength * np.cos(yaw + i), rayFrom[-1][1] + sideLength * np.sin(yaw + i), height])
 
     return rayFrom, rayTo
 
@@ -136,8 +144,10 @@ class RobotControl:
     # object_distance_offset = 0.16428811071136287
     object_distance_offset = 0.3
 
-    def __init__(self, pb_client, max_linear_velocity=MAX_LINEAR_V, max_rotational_velocity=5.0):
+    def __init__(self, pb_client, robot_fsms, max_linear_velocity=MAX_LINEAR_V,
+                 max_rotational_velocity=5.0):
         self.pb_client = pb_client
+        self.robot_fsms = robot_fsms
         self.max_linear_velocity = max_linear_velocity
         self.max_rotational_velocity = max_rotational_velocity
 
@@ -232,8 +242,8 @@ class RobotControl:
                                              velocityGain=gain_v)
 
     def velocity_control2(self, robot_id, vl, vr, r=0.033, gain=0.9):
-        v_left = vl/r
-        v_right = vr/r
+        v_left = vl / r
+        v_right = vr / r
 
         self.pb_client.setJointMotorControl2(bodyUniqueId=robot_id,
                                              jointIndex=0,
@@ -297,15 +307,20 @@ class RobotControl:
         yaw = pose[2]
         v, w = self.pose_control(robot_id, destination)
 
-        rays_from, rays_to = get_rays(pose, 5.0, 0.055)
-        ray_results = pb.rayTestBatch(rays_from, rays_to)
+        # rays_from, rays_to = get_rays(pose, 5.0, 0.055)
+        # ray_results = pb.rayTestBatch(rays_from, rays_to)
 
-        neighbors = set()
-        for (neighbor_id, _, _, _, _) in ray_results:
-            if neighbor_id not in (-1, 0, robot_id) and pb.getNumJoints(neighbor_id) > 1:
-                neighbors.add(neighbor_id)
+        # Find agents, obstacle_robots
+        moving_robots = []
+        obstacle_robots = []
+        for ID in self.robot_fsms:
+            if ID != robot_id:
+                if self.robot_fsms[ID].current_state not in ("MOVE", "RETRIEVE"):
+                    obstacle_robots.append(ID)
+                else:
+                    moving_robots.append(ID)
 
-        if not neighbors:
+        if not (moving_robots or obstacle_robots):
             self.velocity_control(robot_id, linear_velocity=v, rotational_velocity=w)
             return v, w
         else:
@@ -319,16 +334,33 @@ class RobotControl:
             agent = lib.get_agent(robot_id, pose=p, v=v_eff)
 
             # Compute p, v_eff for all neighbors
-            agent_neighbors = []
-            for neighbor in neighbors:
-                neighbor_pose, neighbor_v = self.get_robot_state(neighbor)
-                neighbor_p = get_effective_center(neighbor_pose)
-                neighbor_v_eff = np.dot(M(pose[2]), get_wheel_velocity(norm(neighbor_v[0:2]), neighbor_v[2]))
-                agent_neighbors.append(lib.get_agent(neighbor, neighbor_p, neighbor_v_eff))
-            agent.insert_agent_neighbors(agent_neighbors)
+            other_agents = []
+            for other_robot in moving_robots:
+                agent_pose, agent_v = self.get_robot_state(other_robot)
+                agent_p = get_effective_center(agent_pose)
+                agent_v_eff = np.dot(M(pose[2]), get_wheel_velocity(norm(agent_v[0:2]), agent_v[2]))
+                other_agents.append(lib.get_agent(other_robot, agent_p, agent_v_eff))
+
+            # Add non-moving (state-wise) robots to the obstacle list.
+            obstacle_vertices = []
+            for obstacle in obstacle_robots:
+                r = 0.3
+                (x, y, yaw), _ = self.get_robot_state(obstacle)
+                obstacle_vertices.append([[x + r * np.cos(yaw + np.pi / 4), y + r * np.sin(yaw + np.pi / 4)],
+                                          [x + r * np.cos(yaw + 3 * np.pi / 4), y + r * np.sin(yaw + 3 * np.pi / 4)],
+                                          [x + r * np.cos(yaw + 5 * np.pi / 4), y + r * np.sin(yaw + 5 * np.pi / 4)],
+                                          [x + r * np.cos(yaw + 7 * np.pi / 4), y + r * np.sin(yaw + 7 * np.pi / 4)]])
+            obstacles = lib.get_obstacle_list(obstacle_vertices)
+
+            # Build KD Trees
+            kd_tree = KdTree(agents=other_agents + [agent], obstacles=obstacles)
+            kd_tree.build_agent_tree()
+            kd_tree.build_obstacle_tree()
+            agent.kd_tree_ = kd_tree
 
             # Get adjusted velocity from ORCA given v_pref
             agent.pref_velocity_ = lib.get_vec(v_pref)
+            agent.compute_neighbors()
             agent.compute_new_velocity()
 
             # Convert adjusted velocity into actual v, w control inputs
@@ -372,7 +404,7 @@ class RobotControl:
         for obj in objects:
             if objects[obj] not in ("RECOVERED", "RETRIEVED"):
                 u, v = self.get_object_state(obj)
-                if x <= u <= x+r and y <= v <= y+r:
+                if x <= u <= x + r and y <= v <= y + r:
                     count += 1
 
         return round(np.random.default_rng().normal(count, sigma), 1) if noise == "GAUSSIAN" else count

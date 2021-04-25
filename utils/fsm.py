@@ -1,7 +1,9 @@
 import numpy as np
 import pybullet as p
 
-from utils.control import RobotControl, MAX_LINEAR_V
+from utils.control import RobotControl
+
+MAX_LINEAR_V = 3.5
 
 DEG_TO_RAD = np.pi/180
 MAX_VOLUME = 10
@@ -19,8 +21,8 @@ def in_tolerance(v1, v2):
 
 class ManipulatorStateMachine:
 
-    def __init__(self, pb, robot_id):
-        self.pb = pb
+    def __init__(self, robot_fsm):
+        self.pb = robot_fsm.pb
         self.handlers = {"LOWER": self.lower,
                          "GRAB": self.grab,
                          "PLACE": self.place,
@@ -31,11 +33,11 @@ class ManipulatorStateMachine:
         self.current_state = "NONE"
         self.current_volume = 0
 
-        self.robot = robot_id
+        self.robot = robot_fsm.robot
         self.object = None
         self.constraint = None
 
-        self.control = RobotControl(pb)
+        self.control = robot_fsm.control
         self.target_state = np.array([0, 0, 0, 0])
 
     def release(self, manipulator_state):
@@ -124,7 +126,7 @@ class RobotStateMachine:
     collection_sites = [((0, 0), 5)]
     threshold_distance = 0.5
 
-    def __init__(self, pb, obj_states, robot_id, max_linear_v=MAX_LINEAR_V):
+    def __init__(self, pb, obj_states, robot_fsms, robot_id, max_linear_v=MAX_LINEAR_V):
         self.pb = pb
         self.handlers = {"PICKUP": self.pickup,
                          "MOVE": self.move,
@@ -137,6 +139,7 @@ class RobotStateMachine:
         self.destination = None
         self.target_obj = None
         self.obj_states = obj_states
+        self.robot_fsms = robot_fsms
         self.basket = set()
 
         self.dest_dist = 0
@@ -144,9 +147,8 @@ class RobotStateMachine:
         self.esc_timeout = self.max_esc_timeout
         self.servo_timeout = 0
 
-        self.arm_fsm = ManipulatorStateMachine(pb, robot_id)
-
-        self.control = RobotControl(pb, max_linear_velocity=max_linear_v)
+        self.control = RobotControl(pb, self.robot_fsms, max_linear_velocity=max_linear_v)
+        self.arm_fsm = ManipulatorStateMachine(self)
 
     def pickup(self, state):
         manipulator_state = state[0]
@@ -257,7 +259,7 @@ class RobotStateMachine:
         return_dist = np.linalg.norm((return_site[0] - pose[0], return_site[1] - pose[1]))
 
         if return_dist > DISTANCE_THRESHOLD:
-            self.control.pose_control(self.robot, return_site, avoidance=True)
+            self.control.smart_pose_control(self.robot, return_site)
             self.current_state = "RETRIEVE"
             return "RETRIEVE"
 
