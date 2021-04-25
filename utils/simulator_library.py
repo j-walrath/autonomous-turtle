@@ -62,7 +62,6 @@ def load_robots(pb, locations, collision=True):
                                   flags=p.URDF_ENABLE_CACHED_GRAPHICS_SHAPES))
         pb.changeDynamics(robots[-1], -1, maxJointVelocity=300, lateralFriction=1.0, rollingFriction=0.03,
                           restitution=0.7)
-        step(pb, 100)
 
         if not collision:
             # Do not collide with other robots
@@ -154,7 +153,7 @@ def get_agent(robot_id, pose, v):
     agent.max_neighbors_ = 10
     agent.max_speed_ = utils.control.MAX_LINEAR_V
     agent.neighbor_dist_ = 5.0
-    agent.radius_ = utils.control.RADIUS * 2
+    agent.radius_ = ROBOT_RADIUS * 2
     agent.time_horizon_ = 5.0
     agent.time_horizon_obst_ = 10.0
     agent.time_step_ = 1 / CONTROL_FREQUENCY
