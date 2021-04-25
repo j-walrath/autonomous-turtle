@@ -91,7 +91,7 @@ def cycle_robots(pb, fsms: Dict[int, RobotStateMachine], controller: RobotContro
 
         step(pb, int(SIM_FREQUENCY/CONTROL_FREQUENCY))
 
-        if all(fsm.current_state == "NONE" for fsm in fsms):
+        if all(fsm.current_state == "NONE" for fsm in fsms.values()):
             break
 
 
@@ -113,9 +113,9 @@ def get_agent(robot_id, pose, v):
     agent.id_ = robot_id
     agent.max_neighbors_ = 10
     agent.max_speed_ = utils.control.MAX_LINEAR_V
-    agent.neighbor_dist_ = 3.0
-    agent.radius_ = 0.4
-    agent.time_horizon_ = 10.0
+    agent.neighbor_dist_ = 2.0
+    agent.radius_ = 0.3
+    agent.time_horizon_ = 3.0
     agent.time_horizon_obst_ = 10.0
     agent.time_step_ = 1 / CONTROL_FREQUENCY
 
