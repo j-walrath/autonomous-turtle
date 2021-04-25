@@ -10,7 +10,9 @@ import pybullet as pb
 
 DEG_TO_RAD = np.pi / 180
 MAX_LINEAR_V = 3.5
+MIN_LINEAR_V = -1.5
 MAX_ANGULAR_V = 3.0
+MIN_ANGULAR_V = -3.0
 RADIUS = 0.25
 
 
@@ -46,6 +48,17 @@ def get_wheel_velocity(v, w, L=0.288):
     vr = v + (w * L / 2)
 
     return vl, vr
+
+
+def convert_wheel_velocity(vl, vr, L=0.288):
+    v = (vl + vr)/2
+    w = (vr - vl)/L
+
+    return v, w
+
+
+def saturate(x, min_val, max_val):
+    return max(min_val, min(x, max_val))
 
 
 def M(theta, D=RADIUS, L=0.288):
@@ -279,7 +292,6 @@ class RobotControl:
 
         return v, w
 
-    # CURRENTLY DEPRECATED
     def smart_pose_control(self, robot_id, destination):
         pose, v_current = self.get_robot_state(robot_id)
         yaw = pose[2]
@@ -297,8 +309,8 @@ class RobotControl:
             self.velocity_control(robot_id, linear_velocity=v, rotational_velocity=w)
             return v, w
         else:
-            logging.debug('{} is moving around neighbors: {}'.format(lib.NAMES[robot_id],
-                                                                     [lib.NAMES[neighbor] for neighbor in neighbors]))
+            # logging.debug('{} is moving around neighbors: {}'.format(lib.NAMES[robot_id],
+            #                                                        [lib.NAMES[neighbor-1] for neighbor in neighbors]))
 
             # Compute agent p, v_eff, v_pref
             p = get_effective_center(pose)
@@ -321,9 +333,13 @@ class RobotControl:
 
             # Convert adjusted velocity into actual v, w control inputs
             v_new = np.linalg.solve(M(yaw), (agent.new_velocity_.x, agent.new_velocity_.y))
-            self.velocity_control2(robot_id, v_new[0], v_new[1])
 
-        return v, w
+            v_f, w_f = convert_wheel_velocity(v_new[0], v_new[1])
+            v_f = saturate(v_f, MIN_LINEAR_V, MAX_LINEAR_V)
+            w_f = saturate(w_f, MIN_ANGULAR_V, MAX_ANGULAR_V)
+            self.velocity_control(robot_id, v_f, w_f)
+
+        return v_f, w_f
 
     # Visual servoing for object pickup
     def visual_servoing(self, robot_id, target_pos, pose):
