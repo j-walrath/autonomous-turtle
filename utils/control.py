@@ -44,18 +44,18 @@ def get_effective_center(pose, D=RADIUS):
     return x + D * np.cos(yaw), y + D * np.sin(yaw)
 
 
-def get_wheel_velocity(v, w, L=0.288):
-    vl = v - (w * L / 2)
-    vr = v + (w * L / 2)
-
-    return vl, vr
-
-
-def convert_wheel_velocity(vl, vr, L=0.288):
-    v = (vl + vr) / 2
-    w = (vr - vl) / L
-
-    return v, w
+# def get_wheel_velocity(v, w, L=0.288):
+#     vl = v - (w * L / 2)
+#     vr = v + (w * L / 2)
+#
+#     return vl, vr
+#
+#
+# def convert_wheel_velocity(vl, vr, L=0.288):
+#     v = (vl + vr) / 2
+#     w = (vr - vl) / L
+#
+#     return v, w
 
 
 def saturate(x, min_val, max_val):
@@ -65,8 +65,10 @@ def saturate(x, min_val, max_val):
 def M(theta, D=RADIUS, L=0.288):
     c = np.cos(theta)
     s = np.sin(theta)
-    return np.array([[c / 2 + D * s / L, c / 2 - D * s / L],
-                     [s / 2 - D * c / L, s / 2 + D * c / L]])
+    # return np.array([[c / 2 + D * s / L, c / 2 - D * s / L],
+    #                  [s / 2 - D * c / L, s / 2 + D * c / L]])
+    return np.array([[c, -D*s],
+                     [s, D*c]])
 
 
 def curvature(r, theta, delta):
@@ -207,13 +209,13 @@ class RobotControl:
 
         self.manipulator_control(robot_id, arm_target_state)
 
-    def velocity_control(self, robot_id, linear_velocity, rotational_velocity, r=0.033, gain_v=0.9):
-        vl, vr = get_wheel_velocity(linear_velocity, rotational_velocity)
-        left_wheel_velocity = vl / r
-        right_wheel_velocity = vr / r
+    def velocity_control(self, robot_id, linear_velocity, rotational_velocity, r=0.033, gain_v=0.1):
+        # vl, vr = get_wheel_velocity(linear_velocity, rotational_velocity)
+        # left_wheel_velocity = vl / r
+        # right_wheel_velocity = vr / r
 
-        # left_wheel_velocity = linear_velocity / 0.033 - rotational_velocity * 0.027135999999999997 / (.144 * .033)
-        # right_wheel_velocity = linear_velocity / 0.033 + rotational_velocity * 0.027135999999999997 / (.144 * .033)
+        left_wheel_velocity = linear_velocity / r - rotational_velocity * 0.027135999999999997 / (.144 * r)
+        right_wheel_velocity = linear_velocity / r + rotational_velocity * 0.027135999999999997 / (.144 * r)
 
         self.pb_client.setJointMotorControl2(bodyUniqueId=robot_id,
                                              jointIndex=0,
@@ -240,36 +242,6 @@ class RobotControl:
                                              targetVelocity=right_wheel_velocity,
                                              force=500,
                                              velocityGain=gain_v)
-
-    def velocity_control2(self, robot_id, vl, vr, r=0.033, gain=0.9):
-        v_left = vl / r
-        v_right = vr / r
-
-        self.pb_client.setJointMotorControl2(bodyUniqueId=robot_id,
-                                             jointIndex=0,
-                                             controlMode=pb.VELOCITY_CONTROL,
-                                             targetVelocity=v_left,
-                                             force=500,
-                                             velocityGain=gain)
-        self.pb_client.setJointMotorControl2(bodyUniqueId=robot_id,
-                                             jointIndex=1,
-                                             controlMode=pb.VELOCITY_CONTROL,
-                                             targetVelocity=v_right,
-                                             force=500,
-                                             velocityGain=gain)
-
-        self.pb_client.setJointMotorControl2(bodyUniqueId=robot_id,
-                                             jointIndex=2,
-                                             controlMode=pb.VELOCITY_CONTROL,
-                                             targetVelocity=v_left,
-                                             force=500,
-                                             velocityGain=gain)
-        self.pb_client.setJointMotorControl2(bodyUniqueId=robot_id,
-                                             jointIndex=3,
-                                             controlMode=pb.VELOCITY_CONTROL,
-                                             targetVelocity=v_right,
-                                             force=500,
-                                             velocityGain=gain)
 
     def get_closest_point(self, robot1_id, robot2_id, robot1_pose, distance):
         closest_points = self.pb_client.getClosestPoints(bodyA=robot1_id, bodyB=robot2_id, distance=distance)
@@ -329,8 +301,8 @@ class RobotControl:
 
             # Compute agent p, v_eff, v_pref
             p = get_effective_center(pose)
-            v_eff = np.dot(M(yaw), get_wheel_velocity(norm(v_current[0:2]), v_current[2]))
-            v_pref = np.dot(M(yaw), get_wheel_velocity(v, w))
+            v_eff = np.dot(M(yaw), (norm(v_current[0:2]), v_current[2]))
+            v_pref = np.dot(M(yaw), (v, w))
             agent = lib.get_agent(robot_id, pose=p, v=v_eff)
 
             # Compute p, v_eff for all neighbors
@@ -338,18 +310,18 @@ class RobotControl:
             for other_robot in moving_robots:
                 agent_pose, agent_v = self.get_robot_state(other_robot)
                 agent_p = get_effective_center(agent_pose)
-                agent_v_eff = np.dot(M(pose[2]), get_wheel_velocity(norm(agent_v[0:2]), agent_v[2]))
+                agent_v_eff = np.dot(M(pose[2]), (norm(agent_v[0:2]), agent_v[2]))
                 other_agents.append(lib.get_agent(other_robot, agent_p, agent_v_eff))
 
             # Add non-moving (state-wise) robots to the obstacle list.
             obstacle_vertices = []
             for obstacle in obstacle_robots:
                 r = 0.3
-                (x, y, yaw), _ = self.get_robot_state(obstacle)
-                obstacle_vertices.append([[x + r * np.cos(yaw + np.pi / 4), y + r * np.sin(yaw + np.pi / 4)],
-                                          [x + r * np.cos(yaw + 3 * np.pi / 4), y + r * np.sin(yaw + 3 * np.pi / 4)],
-                                          [x + r * np.cos(yaw + 5 * np.pi / 4), y + r * np.sin(yaw + 5 * np.pi / 4)],
-                                          [x + r * np.cos(yaw + 7 * np.pi / 4), y + r * np.sin(yaw + 7 * np.pi / 4)]])
+                (x_, y_, theta), _ = self.get_robot_state(obstacle)
+                obstacle_vertices.append([[x_ + r*np.cos(theta + np.pi/4), y_ + r*np.sin(theta + np.pi/4)],
+                                          [x_ + r*np.cos(theta + 3*np.pi/4), y_ + r*np.sin(theta + 3*np.pi/4)],
+                                          [x_ + r*np.cos(theta + 5*np.pi/4), y_ + r*np.sin(theta + 5*np.pi/4)],
+                                          [x_ + r*np.cos(theta + 7*np.pi/4), y_ + r*np.sin(theta + 7*np.pi/4)]])
             obstacles = lib.get_obstacle_list(obstacle_vertices)
 
             # Build KD Trees
@@ -364,14 +336,13 @@ class RobotControl:
             agent.compute_new_velocity()
 
             # Convert adjusted velocity into actual v, w control inputs
-            v_new = np.linalg.solve(M(yaw), (agent.new_velocity_.x, agent.new_velocity_.y))
+            v_new, w_new = np.linalg.solve(M(yaw), (agent.new_velocity_.x, agent.new_velocity_.y))
 
-            v_f, w_f = convert_wheel_velocity(v_new[0], v_new[1])
-            v_f = saturate(v_f, MIN_LINEAR_V, MAX_LINEAR_V)
-            w_f = saturate(w_f, MIN_ANGULAR_V, MAX_ANGULAR_V)
-            self.velocity_control(robot_id, v_f, w_f)
+            # v_f = saturate(v_f, MIN_LINEAR_V, MAX_LINEAR_V)
+            # w_f = saturate(w_f, MIN_ANGULAR_V, MAX_ANGULAR_V)
+            self.velocity_control(robot_id, v_new, w_new)
 
-        return v_f, w_f
+        return v_new, w_new
 
     # Visual servoing for object pickup
     def visual_servoing(self, robot_id, target_pos, pose):
