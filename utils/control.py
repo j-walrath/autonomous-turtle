@@ -10,6 +10,7 @@ import pybullet as pb
 
 DEG_TO_RAD = np.pi / 180
 MAX_LINEAR_V = 3.5
+MAX_ANGULAR_V = 3.0
 
 
 def rotation_matrix(theta):
@@ -36,17 +37,17 @@ def rotate(vector, angle):
 
 def curvature(r, theta, delta):
     # ratio of rate of change in theta to the rate of change in r
-    k1 = 1.5
+    k1 = 1.0
 
     # timescale factor between fast subsystem and slow manifold
-    k2 = 8
+    k2 = 10
 
     return -(1/r)*(k2*(delta-np.arctan(-k1*theta)) + (1 + k1/(1+(k1*theta)**2))*np.sin(delta))
 
 
 def compute_v(k, vmax):
     # higher beta = velocity drops more quickly as a function of k
-    beta = 0.6
+    beta = 0.4
 
     # higher gamma = sharper peak for v/vmax vs k curve
     gamma = 1
@@ -265,6 +266,10 @@ class RobotControl:
             phi = normalize_angle(np.arctan2(v_adjusted[1], v_adjusted[0]))
             v_new = norm(rotate(v_adjusted, (phi - yaw)))
             w_new = (phi - yaw) * lib.CONTROL_FREQUENCY     # w = theta / dt
+
+            # if w_new > MAX_ANGULAR_V:
+            #     v_new = 0
+            #     w_new = MAX_ANGULAR_V
 
             self.velocity_control(robot_id, linear_velocity=v_new, rotational_velocity=w_new)
 
