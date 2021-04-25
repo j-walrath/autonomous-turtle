@@ -1,12 +1,15 @@
 import time
+from argparse import ArgumentError
 from typing import List, Dict
 import pybullet as p
 
 import utils.control
 from utils.fsm import RobotStateMachine
 from utils.control import RobotControl
+from utils.rvo import rvo_math
 from utils.rvo.agent import Agent
 from utils.rvo.vector import Vector2
+from utils.rvo.obstacle import Obstacle
 
 OBJ_MODEL = "./urdf_models/objects/object.urdf"
 ROBOT_MODEL = "./urdf_models/tb_openmanipulator/trash_collect_robot_four_wheel.urdf"
@@ -115,7 +118,7 @@ def get_agent(robot_id, pose, v):
     agent.max_speed_ = utils.control.MAX_LINEAR_V
     agent.neighbor_dist_ = 5.0
     agent.radius_ = utils.control.RADIUS * 2
-    agent.time_horizon_ = 10.0
+    agent.time_horizon_ = 5.0
     agent.time_horizon_obst_ = 10.0
     agent.time_step_ = 1 / CONTROL_FREQUENCY
 
@@ -124,6 +127,48 @@ def get_agent(robot_id, pose, v):
 
 def update_pref_v(rvo, agentNo, v):
     rvo.set_agent_pref_velocity(agentNo, Vector2(v[0], v[1]))
+
+
+def get_obstacle_list(obstacle_vertices):
+    obstacles = []
+    for vertices in obstacle_vertices:
+        vec_vertices = [get_vec(vertex) for vertex in vertices]
+        add_obstacle(obstacles, vec_vertices)
+    return obstacles
+
+
+def add_obstacle(obstacle_list, vertices):
+    if len(vertices) < 2:
+        raise ArgumentError('Must have at least 2 vertices.')
+
+    obstacleNo = len(obstacle_list)
+
+    for i in range(len(vertices)):
+        obstacle = Obstacle()
+        obstacle.point_ = vertices[i]
+
+        if i != 0:
+            obstacle.previous_ = obstacle_list[-1]
+            obstacle.previous_.next_ = obstacle
+
+        if i == len(vertices) - 1:
+            obstacle.next_ = obstacle_list[obstacleNo]
+            obstacle.next_.previous_ = obstacle
+
+        obstacle.direction_ = rvo_math.normalize(
+            vertices[0 if i == len(vertices) - 1 else i + 1] - vertices[i])
+
+        if len(vertices) == 2:
+            obstacle.convex_ = True
+        else:
+            obstacle.convex_ = rvo_math.left_of(
+                vertices[len(vertices) - 1 if i == 0 else i - 1],
+                vertices[i],
+                vertices[0 if i == len(vertices) - 1 else i + 1]) >= 0.0
+
+        obstacle.id_ = len(obstacle_list)
+        obstacle_list.append(obstacle)
+    return obstacleNo
 
 
 def get_vec(coords):
