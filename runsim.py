@@ -27,6 +27,7 @@ from sequences.function_test import function_test
 from sequences.function_test import function_test_multi
 from sequences.ray_test import ray_test
 from sequences.visit_cells import visit_cells
+from sequences.velocity_test import velocity_test
 
 logging.basicConfig(level=logging.NOTSET)
 
