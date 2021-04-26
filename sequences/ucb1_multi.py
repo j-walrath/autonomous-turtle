@@ -37,7 +37,7 @@ def ucb1_multi(pb, objects: List[int], object_states: Dict[int, str], robots: Li
     # T = N                            # Number of time steps
     # delta = 1                        # Reward decreases by delta each visit
     xi = 2                           # Constant Xi > 1
-    gamma = 1                        # Max message length
+    gamma = 10                        # Max message length
 
     msgTx = {}                       # Dict {agent: list of messages to send - tuple [agent, time, arm, reward]}
     msgRx = {}                       # Dict {agent: list of messages to received - tuple [agent, time, arm, reward]}
@@ -55,7 +55,7 @@ def ucb1_multi(pb, objects: List[int], object_states: Dict[int, str], robots: Li
 
     # If graph[i][j] = 1 then there is an edge between agents i and j (graph must be symmetric)
     # graph = np.ones((K, K))
-    degree = 4
+    degree = 0
     graph = np.identity(K)
     if degree % 2 == 0:
         count = int(degree/2)
@@ -232,9 +232,18 @@ def ucb1_multi(pb, objects: List[int], object_states: Dict[int, str], robots: Li
     # FINAL OUTPUT
     logging.info("Simulation Complete!")
     cumulative_regret = np.cumsum(np.array(regret), axis=1)
+    total_cumulative_regret = np.sum(cumulative_regret, axis=0)
     logging.info("Cumulative Regret: {}".format(cumulative_regret))
-    plt.plot(np.arange(T), cumulative_regret[0])
+    plt.plot(np.arange(T), total_cumulative_regret)
     plt.show()
+
+    with open("./outputs/Multi-Agent UCB d{}g{}.txt".format(degree, gamma), "a") as f:
+        f.write("Multi-Agent UCB (Degree = {}, Message Passing {})\n\n".format(degree, "OFF" if gamma == 1 else "ON"))
+        f.write("Cumulative Regret by Agent:\n")
+        np.savetxt(f, cumulative_regret, fmt="%.2f", delimiter=", ")
+        f.write("\n\nSystem Cumulative Regret:")
+        np.savetxt(f, total_cumulative_regret, fmt="%.2f", delimiter=", ")
+        f.write("\n\nTimesteps: {}".format(T))
 
     logging.debug("Returning to Main...")
 
