@@ -76,7 +76,7 @@ def init_sim(numObjects=0, numRobots=0):  # PYBULLET INIT
     physClient.setGravity(0, 0, -9.807)
     p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
     # physClient.resetDebugVisualizerCamera(6, 0, -89, [0, 0, 0])  # overhead camera perspective
-    physClient.resetDebugVisualizerCamera(4, 0, -89, [2.5, 2.5, 0])  # overhead camera perspective (pos grid)
+    physClient.resetDebugVisualizerCamera(6, 0, -89, [2.5, 2.5, 0])  # overhead camera perspective (pos grid)
 
     # LOAD PLANE
     lib.load_plane(physClient)

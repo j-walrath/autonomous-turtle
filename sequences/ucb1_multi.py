@@ -99,7 +99,7 @@ def ucb1_multi(pb, objects: List[int], object_states: Dict[int, str], robots: Li
         objects.append(obj)
         object_states[obj] = "ON_GROUND"
 
-    lib.step(pb, 20)
+    lib.step(pb, 100)
 
     logging.debug("Executing Simulation...")
 

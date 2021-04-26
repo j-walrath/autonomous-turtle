@@ -152,10 +152,10 @@ def get_agent(robot_id, pose, v):
     agent.velocity_ = get_vec(center_v)
     agent.max_neighbors_ = 10
     agent.max_speed_ = utils.control.MAX_LINEAR_V
-    agent.neighbor_dist_ = 5.0
+    agent.neighbor_dist_ = 2.0
     agent.radius_ = ROBOT_RADIUS * 2
     agent.time_horizon_ = 5.0
-    agent.time_horizon_obst_ = 10.0
+    agent.time_horizon_obst_ = 5.0
     agent.time_step_ = 1 / CONTROL_FREQUENCY
 
     return agent

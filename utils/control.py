@@ -220,6 +220,14 @@ class RobotControl:
             # w_new = saturate(w_new, MIN_ANGULAR_V, MAX_ANGULAR_V)
             self.velocity_control(robot_id, v_new, w_new)
 
+        # logging.debug("Fluffy is avoiding agents {} and obstacles {}. Preferred controls are {}, compared to actual
+        # {}". format(agent.agent_neighbors_, [(round(o[1].point_.x_, 2), round(o[1].point_.y_, 2)) for o in
+        # agent.obstacle_neighbors_], (round(v, 2), round(w, 2)), (round(v_new, 2), round(w_new, 2))))
+
+        logging.debug("Fluffy is avoiding {} agents and {} obstacles. Preferred controls are {}, compared to actual {}".
+                      format(len(moving_robots), len(obstacle_robots),
+                             (round(v, 2), round(w, 2)), (round(v_new, 2), round(w_new, 2))))
+
         return v_new, w_new
 
     # Visual servoing for object pickup
