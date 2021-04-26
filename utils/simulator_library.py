@@ -18,7 +18,7 @@ OBJ_MODEL = "./urdf_models/objects/object.urdf"
 ROBOT_MODEL = "./urdf_models/tb_openmanipulator/trash_collect_robot_four_wheel.urdf"
 PLANE_MODEL = "./urdf_models/plane_with_dumpsters.urdf"
 
-SIM_FREQUENCY = 240
+SIM_FREQUENCY = 120
 CONTROL_FREQUENCY = 40
 NAMES = ["Fluffy", "Oogway", "Crush", "Franklin", "Genbu", "Yertle", "Leonardo", "Raphael", "Donatello", "Michelangelo"]
 

@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 CONTROL_TIME = int(lib.SIM_FREQUENCY/lib.SIM_FREQUENCY)
 N = 100     # Number of objects
 M = 5       # Size of grid
-K = 6       # Number of turtlebots (must be even)
+K = 10       # Number of turtlebots (must be even)
 
 
 def in_cell(target, state):
@@ -128,7 +128,12 @@ def ucb1_multi(pb, objects: List[int], object_states: Dict[int, str], robots: Li
     # RUN UCB1
     T += 1
     while np.max(field) > 0:
-        logging.debug("TIMESTEP T = {}".format(T))
+        count = 0
+        for obj in object_states.values():
+            if obj in ("ON_GROUND", "ASSIGNED"):
+                count += 1
+        logging.debug("TIMESTEP T = {} ({} objects remain)".format(T, count))
+
         idxs = []
 
         for agent in range(K):
@@ -138,11 +143,6 @@ def ucb1_multi(pb, objects: List[int], object_states: Dict[int, str], robots: Li
             Q = exp_mean[agent] + var * np.divide(math.sqrt(2*(xi + 1)*math.log(T)), np.sqrt(visits[agent]))
             target = np.unravel_index(np.argmax(Q), Q.shape)
 
-            # Extra movement to avoid bumping into other robots
-            # robot_fsms[robot].set_destination((5, 5))
-            # lib.cycle_robot(pb, robot_fsms[robot])
-            # lib.step(pb, 10)
-
             # Make measurement
             robot_fsms[robot].set_destination(lib.get_cell_coordinates(target[0], target[1]))
             lib.cycle_robot(pb, robot_fsms[robot])
@@ -150,6 +150,8 @@ def ucb1_multi(pb, objects: List[int], object_states: Dict[int, str], robots: Li
 
             measurement = controller.measure(robot, object_states, noise="GAUSSIAN", sigma=var)
             idxs.append(target)
+
+            logging.debug("{} measured {} at cell {}".format(lib.NAMES[agent], measurement, target))
 
             # Calculate regret
             max_reward = field[np.unravel_index(np.argmax(field), field.shape)] # based off optimal target
@@ -167,6 +169,7 @@ def ucb1_multi(pb, objects: List[int], object_states: Dict[int, str], robots: Li
             # Return
             robot_fsms[robot].set_destination(coords[agent])
             lib.cycle_robot(pb, robot_fsms[robot])
+            logging.debug("{} returned to their start position {}".format(lib.NAMES[agent], coords[agent]))
 
         for agent in range(K):
             robot = robots[agent]
@@ -184,6 +187,8 @@ def ucb1_multi(pb, objects: List[int], object_states: Dict[int, str], robots: Li
                     break
             lib.cycle_robot(pb, robot_fsms[robot])
 
+            logging.debug("{} picked up an object at {}".format(lib.NAMES[agent], target))
+
             # Decrement field
             if field[target] > 0:
                 field[target] -= 1
@@ -191,6 +196,8 @@ def ucb1_multi(pb, objects: List[int], object_states: Dict[int, str], robots: Li
             # Return to start location
             robot_fsms[robot].set_destination(coords[agent])
             lib.cycle_robot(pb, robot_fsms[robot])
+
+            logging.debug("{} returned to their start location at {}".format(lib.NAMES[agent], coords[agent]))
 
         # Exchange messages and adjust expected mean
         for agent in range(K):
