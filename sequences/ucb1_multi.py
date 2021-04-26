@@ -37,7 +37,7 @@ def ucb1_multi(pb, objects: List[int], object_states: Dict[int, str], robots: Li
     # T = N                            # Number of time steps
     # delta = 1                        # Reward decreases by delta each visit
     xi = 2                           # Constant Xi > 1
-    gamma = 3                        # Max message length
+    gamma = 1                        # Max message length
 
     msgTx = {}                       # Dict {agent: list of messages to send - tuple [agent, time, arm, reward]}
     msgRx = {}                       # Dict {agent: list of messages to received - tuple [agent, time, arm, reward]}
@@ -47,6 +47,7 @@ def ucb1_multi(pb, objects: List[int], object_states: Dict[int, str], robots: Li
     controller = RobotControl(pb, robot_fsms)
 
     # INITIALIZE COMMUNICATION NETWORK
+    logging.debug("Initializing communication network...")
     for agent in range(K):
         msgTx[agent] = []
         msgRx[agent] = []
@@ -77,9 +78,10 @@ def ucb1_multi(pb, objects: List[int], object_states: Dict[int, str], robots: Li
                 graph[i][neighbor] = 1
                 graph[neighbor][i] = 1
 
-    logging.info("Simulation Graph: {}".format(graph))
+    logging.info("Simulation Graph (DEGREE = {}, GAMMA = {}): \n{}".format(degree, gamma, graph))
 
     # LOAD OBJECTS AND ROBOTS
+    logging.debug("Loading {} agents and {} objects...".format(K, N))
     coords = [(1, 7), (-2, 7), (-2, 4), (-2, 1), (-2, -2), (1, -2), (4, -2), (7, -2), (7, 1), (7, 4)]
     for robot in lib.load_robots(pb, coords[0:K]):
         robots.append(robot)
@@ -105,6 +107,7 @@ def ucb1_multi(pb, objects: List[int], object_states: Dict[int, str], robots: Li
     # logging.debug("{} is aware of fsms for {}".format(lib.NAMES[robots[0]-1],
     #                                                   [lib.NAMES[bot_id - 1] for bot_id in fsms]))
     # INITIALIZE AGENT
+    logging.debug("Initializing agents...")
     T = 0
     for agent in range(K):
         robot = robots[agent]
@@ -181,13 +184,16 @@ def ucb1_multi(pb, objects: List[int], object_states: Dict[int, str], robots: Li
             lib.cycle_robot(pb, robot_fsms[robot])
 
             # Pickup object
+            flag = False
             for obj in objects:
                 if object_states[obj] == "ON_GROUND" and in_cell(target, controller.get_object_state(obj)):
                     robot_fsms[robot].set_target(obj)
+                    flag = True
                     break
             lib.cycle_robot(pb, robot_fsms[robot])
 
-            logging.debug("{} picked up an object at {}".format(lib.NAMES[agent], target))
+            logging.debug("{} {} an object at {}".format(lib.NAMES[agent], "picked up" if flag else "did not find",
+                                                         target))
 
             # Decrement field
             if field[target] > 0:
@@ -220,14 +226,15 @@ def ucb1_multi(pb, objects: List[int], object_states: Dict[int, str], robots: Li
             # Calculate expected mean
             reward[agent] -= np.multiply(new_visits, visits[agent])
             exp_mean[agent] = np.divide(reward[agent], visits[agent])
-
+        logging.debug("FIELD AT END OF TIMESTEP:\n{}".format(field))
         T += 1
 
     # FINAL OUTPUT
     logging.info("Simulation Complete!")
     cumulative_regret = np.cumsum(np.array(regret), axis=1)
     logging.info("Cumulative Regret: {}".format(cumulative_regret))
-    plt.plot(np.arange(T), cumulative_regret)
+    plt.plot(np.arange(T), cumulative_regret[0])
+    plt.show()
 
     logging.debug("Returning to Main...")
 
