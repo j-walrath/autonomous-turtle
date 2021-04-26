@@ -233,7 +233,7 @@ def ucb1_multi(pb, objects: List[int], object_states: Dict[int, str], robots: Li
     logging.info("Simulation Complete!")
     cumulative_regret = np.cumsum(np.array(regret), axis=1)
     total_cumulative_regret = np.sum(cumulative_regret, axis=0)
-    logging.info("Cumulative Regret: {}".format(cumulative_regret))
+    logging.info("Cumulative Regret:\n{}".format(cumulative_regret))
     plt.plot(np.arange(T), total_cumulative_regret)
     plt.show()
 
