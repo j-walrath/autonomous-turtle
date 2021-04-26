@@ -155,7 +155,7 @@ def get_agent(robot_id, pose, v):
     agent.neighbor_dist_ = 2.0
     agent.radius_ = ROBOT_RADIUS * 2
     agent.time_horizon_ = 5.0
-    agent.time_horizon_obst_ = 5.0
+    agent.time_horizon_obst_ = 1.0
     agent.time_step_ = 1 / CONTROL_FREQUENCY
 
     return agent

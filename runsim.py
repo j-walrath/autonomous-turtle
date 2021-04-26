@@ -71,7 +71,7 @@ def generate_robot_coordinates(bounds, n):  # LOAD ROBOT(S)
 
 
 def init_sim(numObjects=0, numRobots=0):  # PYBULLET INIT
-    physClient = pbc.BulletClient(connection_mode=p.GUI)
+    physClient = pbc.BulletClient(connection_mode=p.DIRECT)
     physClient.setAdditionalSearchPath(pybullet_data.getDataPath())
     physClient.setGravity(0, 0, -9.807)
     p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)

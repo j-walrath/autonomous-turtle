@@ -80,11 +80,8 @@ def ucb1_multi(pb, objects: List[int], object_states: Dict[int, str], robots: Li
     logging.info("Simulation Graph: {}".format(graph))
 
     # LOAD OBJECTS AND ROBOTS
-    coords = []
-    for i in range(K):
-        coords.append([math.ceil(i / 2.)*3 - 2, -2] if i & 1 else [-2, math.ceil(i / 2.)*3 - 2])
-
-    for robot in lib.load_robots(pb, coords):
+    coords = [(1, 7), (-2, 7), (-2, 4), (-2, 1), (-2, -2), (1, -2), (4, -2), (7, -2), (7, 1), (7, 4)]
+    for robot in lib.load_robots(pb, coords[0:K]):
         robots.append(robot)
         robot_fsms[robot] = fsm.RobotStateMachine(pb, object_states, robot_fsms, robot)
 
