@@ -1,4 +1,5 @@
 import logging
+import time
 
 import pybullet as p
 import math
@@ -13,16 +14,21 @@ def ray_test(pb, objects, object_states, robots, robot_fsms):
     # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING,0)
     pb.resetDebugVisualizerCamera(2, 0, -89, [0, 0, 0])
 
-    robots = lib.load_robots(pb, [[0, 0]])
+    useGui = True
+    x_, y_ = 0, 0
+    robots = lib.load_robots(pb, [[x_, y_]])
+    for _ in range(100):
+        pb.stepSimulation()
+        time.sleep(1./240.)
     # robots = lib.load_robots(pb, [[3, 3], [-5, -2]])
-    # objects = lib.load_objects(pb, [[1, 2], [2.5, 2.5]])
+    # objects = lib.load_objects(pb, [[0.7, 0.56], [0.5, 0.68], [0.45, 0.24]])
     # logging.debug("Objects have {} joints.".format(pb.getNumJoints(objects[0])))
 
     rayFrom = []
     rayTo = []
     rayIds = []
 
-    numRays = 11
+    numRays = 51
 
     rayLen = 5
 
@@ -42,27 +48,37 @@ def ray_test(pb, objects, object_states, robots, robot_fsms):
     #     else:
     #         rayIds.append(-1)
 
-    length = 0.3
-    sideLength = length * 0.6
-    height = 0.055
+    length = 3.0
+    width = 3.0
+    sideLength = length
+    height = 0.015
     factor = 1.5
 
     (x, y, yaw), _ = controller.get_robot_state(robots[-1])
     rayFrom.append([x * np.cos(yaw), y * np.sin(yaw), height])
     rayTo.append([rayFrom[0][0] + length * np.cos(yaw), rayFrom[0][1] + length * np.sin(yaw), height])
     if replaceLines:
-        rayIds.append(p.addUserDebugLine(rayFrom[0], rayTo[0], rayMissColor))
+        rayIds.append(p.addUserDebugLine(rayFrom[0], rayTo[0], rayMissColor, lineWidth=width, parentObjectUniqueId=robots[-1]))
     else:
         rayIds.append(-1)
 
-    for i in np.linspace(np.pi/4, 2*np.pi - np.pi/4, 7):
+    for i in np.linspace(0, 2 * np.pi, 80):
         rayFrom.append(rayFrom[-1])
         rayTo.append([rayFrom[-1][0] + length * np.cos(yaw+i), rayFrom[-1][1] + length * np.sin(yaw+i), height])
 
         if replaceLines:
-            rayIds.append(p.addUserDebugLine(rayFrom[0], rayTo[0], rayMissColor))
+            rayIds.append(p.addUserDebugLine(rayFrom[-1], rayTo[-1], rayMissColor, lineWidth=width))
         else:
             rayIds.append(-1)
+
+    # for i in np.linspace(np.pi/4, 2*np.pi - np.pi/4, 7):
+    #     rayFrom.append(rayFrom[-1])
+    #     rayTo.append([rayFrom[-1][0] + length * np.cos(yaw+i), rayFrom[-1][1] + length * np.sin(yaw+i), height])
+    #
+    #     if replaceLines:
+    #         rayIds.append(p.addUserDebugLine(rayFrom[0], rayTo[0], rayMissColor))
+    #     else:
+    #         rayIds.append(-1)
 
     # for i in np.linspace(0.02, 0.11, 6):
     #     dx = i/length * (rayFrom[0][1]-rayTo[0][1])
@@ -72,7 +88,7 @@ def ray_test(pb, objects, object_states, robots, robot_fsms):
     #     rayTo.append([rayFrom[-1][0] + length * np.cos(yaw-(factor*i)), rayFrom[-1][1] + length * np.sin(yaw-(factor*i)), height])
     #
     #     if replaceLines:
-    #         rayIds.append(p.addUserDebugLine(rayFrom[0], rayTo[0], rayMissColor))
+    #         rayIds.append(p.addUserDebugLine(rayFrom[0], rayTo[0], rayMissColor, lineWidth=width))
     #     else:
     #         rayIds.append(-1)
     #
@@ -84,25 +100,25 @@ def ray_test(pb, objects, object_states, robots, robot_fsms):
     #     rayTo.append([rayFrom[-1][0] + length * np.cos(yaw-(factor*i)), rayFrom[-1][1] + length * np.sin(yaw-(factor*i)), height])
     #
     #     if replaceLines:
-    #         rayIds.append(p.addUserDebugLine(rayFrom[0], rayTo[0], rayMissColor))
+    #         rayIds.append(p.addUserDebugLine(rayFrom[0], rayTo[0], rayMissColor, lineWidth=width))
     #     else:
     #         rayIds.append(-1)
-    #
-    # for i in np.linspace(3*np.pi/4, 0, 15, endpoint=False):
+
+    # for i in np.linspace(0.47*np.pi, np.pi/20, 15, endpoint=False):
     #     rayFrom.append(rayFrom[-1])
     #     rayTo.append([rayFrom[-1][0] + sideLength * np.cos(yaw+i), rayFrom[-1][1] + sideLength * np.sin(yaw+i), height])
     #
     #     if replaceLines:
-    #         rayIds.append(p.addUserDebugLine(rayFrom[0], rayTo[0], rayMissColor))
+    #         rayIds.append(p.addUserDebugLine(rayFrom[0], rayTo[0], rayMissColor, lineWidth=width))
     #     else:
     #         rayIds.append(-1)
     #
-    # for i in np.linspace(-3*np.pi/4, 0, 15, endpoint=False):
+    # for i in np.linspace(-0.47*np.pi, -np.pi/20, 15, endpoint=False):
     #     rayFrom.append(rayFrom[6])
     #     rayTo.append([rayFrom[6][0] + sideLength * np.cos(yaw+i), rayFrom[6][1] + sideLength * np.sin(yaw+i), height])
     #
     #     if replaceLines:
-    #         rayIds.append(p.addUserDebugLine(rayFrom[0], rayTo[0], rayMissColor))
+    #         rayIds.append(p.addUserDebugLine(rayFrom[0], rayTo[0], rayMissColor, lineWidth=width))
     #     else:
     #         rayIds.append(-1)
 
@@ -110,22 +126,21 @@ def ray_test(pb, objects, object_states, robots, robot_fsms):
     for i in range(numSteps):
         p.stepSimulation()
         for j in range(8):
-            results = p.rayTestBatch(rayFrom, rayTo, parentObjectUniqueId=robots[-1])
+            results = p.rayTestBatch(rayFrom, rayTo, j + 1)
 
         # for i in range (10):
         #	p.removeAllUserDebugItems()
 
-        if not replaceLines:
-            p.removeAllUserDebugItems()
+        if (useGui):
+            if (not replaceLines):
+                p.removeAllUserDebugItems()
 
-        for k in range(len(rayFrom)):
-            hitObjectUid = results[k][0]
+            for i in range(numRays):
+                hitObjectUid = results[i][0]
 
-            if hitObjectUid < 0:
-                hitPosition = [0, 0, 0]
-                p.addUserDebugLine(rayFrom[k], rayTo[k], rayMissColor, replaceItemUniqueId=rayIds[k])
-            else:
-                hitPosition = results[k][3]
-                p.addUserDebugLine(rayFrom[k], hitPosition, rayHitColor, replaceItemUniqueId=rayIds[k])
-
-        # time.sleep(1./240.)
+                if (hitObjectUid < 0):
+                    hitPosition = [0, 0, 0]
+                    p.addUserDebugLine(rayFrom[i], rayTo[i], rayMissColor, replaceItemUniqueId=rayIds[i], lineWidth=width)
+                else:
+                    hitPosition = results[i][3]
+                    p.addUserDebugLine(rayFrom[i], rayTo[i], rayMissColor, replaceItemUniqueId=rayIds[i], lineWidth=width)

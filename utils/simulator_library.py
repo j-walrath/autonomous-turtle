@@ -46,7 +46,7 @@ def load_objects(pb, locations, collision=False):
 
         if not collision:
             # Do not collide with robots or other objects
-            pb.setCollisionFilterGroupMask(objects[-1], -1, 0, 0)
+            # pb.setCollisionFilterGroupMask(objects[-1], -1, 0, 0)
 
             # Do collide with the ground plane
             pb.setCollisionFilterPair(objects[-1], 0, -1, -1, 1)

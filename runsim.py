@@ -39,7 +39,7 @@ outDir = './outputs/'
 
 # CONSTANTS & GLOBAL VARIABLES
 DEFAULT_BOUNDS = (-5, 5)   # area bounds for sim world
-SIM_SEQUENCE = ucb1_multi
+SIM_SEQUENCE = function_test_multi
 
 objects = []               # list of body unique object IDs
 object_states = {}         # key: object ID, val: string state of object
@@ -71,13 +71,14 @@ def generate_robot_coordinates(bounds, n):  # LOAD ROBOT(S)
 
 
 def init_sim(numObjects=0, numRobots=0):  # PYBULLET INIT
-    physClient = pbc.BulletClient(connection_mode=p.DIRECT)
+    physClient = pbc.BulletClient(connection_mode=p.GUI)
     physClient.setAdditionalSearchPath(pybullet_data.getDataPath())
     physClient.setGravity(0, 0, -9.807)
     p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
-    # physClient.resetDebugVisualizerCamera(6, 0, -89, [0, 0, 0])  # overhead camera perspective
-    physClient.resetDebugVisualizerCamera(6, 0, -89, [2.5, 2.5, 0])  # overhead camera perspective (pos grid)
-
+    physClient.resetDebugVisualizerCamera(4, 0, -89, [0, 0, 0])  # overhead camera perspective
+    # physClient.resetDebugVisualizerCamera(6, 0, -89, [2.5, 2.5, 0])  # overhead camera perspective (pos grid)
+    # (width, height, viewMat, projMat, _, _, _, _, _, _, _, _) = p.getDebugVisualizerCamera(physClient)
+    p.startStateLogging(loggingType=p.STATE_LOGGING_VIDEO_MP4, fileName="output.mp4".format(SIM_SEQUENCE))
     # LOAD PLANE
     lib.load_plane(physClient)
 

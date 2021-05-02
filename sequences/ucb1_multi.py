@@ -19,7 +19,7 @@ def in_cell(target, state):
     return target[0] <= state[0] <= target[0]+1 and target[1] <= state[1] <= target[1]+1
 
 
-# SINGLE AGENT UCB TEST
+# MULTI AGENT UCB TEST
 def ucb1_multi(pb, objects: List[int], object_states: Dict[int, str], robots: List[int],
                robot_fsms: Dict[int, fsm.RobotStateMachine]):
     logging.info('Running Multi Agent UCB1...')
@@ -37,7 +37,7 @@ def ucb1_multi(pb, objects: List[int], object_states: Dict[int, str], robots: Li
     # T = N                            # Number of time steps
     # delta = 1                        # Reward decreases by delta each visit
     xi = 2                           # Constant Xi > 1
-    gamma = 10                        # Max message length
+    gamma = 1                        # Max message length
 
     msgTx = {}                       # Dict {agent: list of messages to send - tuple [agent, time, arm, reward]}
     msgRx = {}                       # Dict {agent: list of messages to received - tuple [agent, time, arm, reward]}
@@ -55,7 +55,7 @@ def ucb1_multi(pb, objects: List[int], object_states: Dict[int, str], robots: Li
 
     # If graph[i][j] = 1 then there is an edge between agents i and j (graph must be symmetric)
     # graph = np.ones((K, K))
-    degree = 0
+    degree = 9
     graph = np.identity(K)
     if degree % 2 == 0:
         count = int(degree/2)

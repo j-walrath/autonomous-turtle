@@ -1,7 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ProjectPlainTextFileTypeManager">
-    <file url="file://$PROJECT_DIR$/outputs/multi_agent_comms_0" />
+    <file url="file://$PROJECT_DIR$/outputs/Multi-Agent UCB d0g10.txt" />
+    <file url="file://$PROJECT_DIR$/outputs/Multi-Agent UCB d1g1.txt" />
+    <file url="file://$PROJECT_DIR$/outputs/Multi-Agent UCB d1g10.txt" />
+    <file url="file://$PROJECT_DIR$/outputs/Multi-Agent UCB d2g1.txt" />
+    <file url="file://$PROJECT_DIR$/outputs/Multi-Agent UCB d2g10.txt" />
+    <file url="file://$PROJECT_DIR$/outputs/Multi-Agent UCB d3g1.txt" />
+    <file url="file://$PROJECT_DIR$/outputs/Multi-Agent UCB d3g10.txt" />
+    <file url="file://$PROJECT_DIR$/outputs/Multi-Agent UCB d4g1.txt" />
+    <file url="file://$PROJECT_DIR$/outputs/Multi-Agent UCB d4g10.txt" />
+    <file url="file://$PROJECT_DIR$/outputs/Multi-Agent UCB d5g1.txt" />
+    <file url="file://$PROJECT_DIR$/outputs/Multi-Agent UCB d5g10.txt" />
+    <file url="file://$PROJECT_DIR$/outputs/Multi-Agent UCB d6g1.txt" />
+    <file url="file://$PROJECT_DIR$/outputs/Multi-Agent UCB d6g10.txt" />
+    <file url="file://$PROJECT_DIR$/outputs/Multi-Agent UCB d7g1.txt" />
+    <file url="file://$PROJECT_DIR$/outputs/Multi-Agent UCB d7g10.txt" />
+    <file url="file://$PROJECT_DIR$/outputs/Multi-Agent UCB d8g1.txt" />
+    <file url="file://$PROJECT_DIR$/outputs/Multi-Agent UCB d8g10.txt" />
+    <file url="file://$PROJECT_DIR$/outputs/Multi-Agent UCB d9g1.txt" />
+    <file url="file://$PROJECT_DIR$/outputs/Multi-Agent UCB d9g10.txt" />
+    <file url="file://$PROJECT_DIR$/outputs/test.txt" />
+    <file url="file://$PROJECT_DIR$/outputs/test.txt" />
   </component>
   <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.7" project-jdk-type="Python SDK" />
   <component name="PyCharmProfessionalAdvertiser">
